@@ -1,7 +1,7 @@
 import subprocess, random
 
-from quikscore.database import db_session
-from quikscore.models import User
+from enigma.database import db_session
+from enigma.models import User
 
 class Service():
 

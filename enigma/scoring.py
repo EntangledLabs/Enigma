@@ -4,9 +4,9 @@ from os.path import isfile, join, splitext
 from enum import Enum
 import random, pickle
 
-from quikscore.models import ScoreReport, User, CredListDB
-from quikscore.database import db_session
-from quikscore.checks import *
+from enigma.models import ScoreReport, User, CredListDB
+from enigma.database import db_session
+from enigma.checks import *
 
 boxes_path = './boxes/'
 creds_path = './creds/'

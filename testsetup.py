@@ -1,6 +1,6 @@
-from quikscore.database import db_session, init_db, del_db
-from quikscore.auth import PWHash
-from quikscore.models import User
+from enigma.database import db_session, init_db, del_db
+from enigma.auth import PWHash
+from enigma.models import User
 
 passwords = [User.generate_password() for i in range(0,5)]
 

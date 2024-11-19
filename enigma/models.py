@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, Text, TypeDecorator, Uuid, ForeignKey, Boolean, PickleType
 from sqlalchemy.orm import validates
 
-from quikscore.database import Base
-from quikscore.auth import PWHash
+from enigma.database import Base
+from enigma.auth import PWHash
 
 import secrets, string
 

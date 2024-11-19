@@ -10,9 +10,9 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 def init_db():
-    import quikscore.models
+    import enigma.models
     Base.metadata.create_all(bind=engine)
 
 def del_db():
-    import quikscore.models
+    import enigma.models
     Base.metadata.drop_all(bind=engine)

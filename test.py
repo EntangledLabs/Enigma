@@ -1,12 +1,12 @@
 import tomllib, csv
 import pkgutil, inspect
-import quikscore
+import enigma
 import os, hashlib
-from quikscore.auth import PWHash
-from quikscore.models import User, ScoreReport
-from quikscore.database import db_session, init_db, del_db
-from quikscore.checks import Service, SSHService, HTTPService, HTTPSService
-from quikscore.scoring import Box, ScoringEngine, CredList
+from enigma.auth import PWHash
+from enigma.models import User, ScoreReport
+from enigma.database import db_session, init_db, del_db
+from enigma.checks import Service, SSHService, HTTPService, HTTPSService
+from enigma.scoring import Box, ScoringEngine, CredList
 
 import uuid
 
