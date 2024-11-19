@@ -1,0 +1,45 @@
+# Any database can be used here. The appropriate DB-API must be installed before use.
+# Tested with sqlite3
+[database]
+# dialect+driver://username:password@host:port/database
+db_url = 'sqlite:///quikscore.db'
+
+[services]
+services = ['ssh', 'http', 'https']
+
+# General settings
+
+[general]
+verbose = true                  # Extra information for debugging
+competitor_info = 'minimal'     # Level of info to show competitors [minimal, typical, extra]
+pcr_portal = true               # Enables a portal for competitors to submit password change requests
+inject_portal = true            # Enables a portal for competitors to access injects
+name = 'quikscore'              # Name of the competition
+
+# Round settings
+
+[round]
+check_time = 60                 # Time between score checks in seconds
+check_jitter = 10               # Modifier for score time -> actual score time = score_time +/- score_jitter
+check_timeout = 30              # Max time to wait for a proper response. Timeout must be less than [score_time - score_jitter]
+check_points = 10               # Points per successful check
+sla_requirement = 30            # Number of consecutive failed checks before SLA violation is declared
+sla_penalty = 100               # Points deducted for an SLA violation
+
+# Administration
+# Two admins are defined. The 'root' admin has total control of every setting of QuikScore.
+# The 'green' admin can access/modify competitor injects, pcrs, and score reports
+
+[admin]
+root_username = 'root'          # Username for root user
+root_pw = 'quikscore'           # Password for root user
+green_username = 'green'        # Username for green user
+green_pw = 'green'              # Password for green user
+
+# Environment definition
+# QuikScore assumes that the third octet is unique per team
+# QuikScore also assumes that the first team is assigned pod 1, the second team pod 2, and so on
+
+[environment]
+first_octets = '172.16'         # First two octets for the IP addresses of the boxes
+first_pod_third_octet = '1'     # First pod 
