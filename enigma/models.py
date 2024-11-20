@@ -4,7 +4,7 @@ from sqlalchemy.orm import validates
 from enigma.database import Base
 from enigma.auth import PWHash
 
-import secrets, string
+import secrets, string, json
 
 ## Custom SQLAlchemy Types
 
@@ -20,7 +20,7 @@ class PasswordHash(TypeDecorator):
     
     def process_result_value(self, value, dialect):
         if value is not None:
-            return PWHash(value[:-32], value[-32:])
+            return self._convert(value)
 
     def validator(self, password):
         return self._convert(password)
@@ -29,7 +29,7 @@ class PasswordHash(TypeDecorator):
         if isinstance(value, PWHash):
             return value
         elif isinstance(value, str):
-            return PWHash.new(value[:-32], salt_ = value[-32:])
+            return PWHash(value[:-32], value[-32:])
         elif value is not None:
             raise TypeError(
                 'Cannot convert {} to a PWHash'.format(type(value))
@@ -43,7 +43,7 @@ class User(Base):
     username = Column(Text, unique=True, nullable=False)
     pw_hash = Column(PasswordHash, nullable=False)
     identifier = Column(Integer, nullable=False)
-    score = Column(Integer)
+    scores = Column(PickleType, nullable=False)
 
     @validates('pw_hash')
     def _validate_password(self, key, password):
@@ -51,11 +51,12 @@ class User(Base):
     
     def authenticate(self, pw):
         return self.pw_hash == pw
-    
+
     @classmethod
     def generate_password(cls):
         alphabet = string.ascii_letters + string.digits + string.punctuation
         return ''.join(secrets.choice(alphabet) for i in range(16))
+
     
 class CredListDB(Base):
     __tablename__ = 'credlists'

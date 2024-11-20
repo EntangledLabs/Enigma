@@ -1,4 +1,4 @@
-import tomllib, csv
+import tomllib, csv, json
 import pkgutil, inspect
 import enigma
 import os, hashlib
@@ -7,6 +7,7 @@ from enigma.models import User, ScoreReport
 from enigma.database import db_session, init_db, del_db
 from enigma.checks import Service, SSHService, HTTPService, HTTPSService
 from enigma.scoring import Box, ScoringEngine, CredList
+from enigma.util import ScoreBreakdown
 
 import uuid
 
@@ -100,4 +101,11 @@ print(creds)"""
 #credlist = CredList.new('examplecreds.csv')
 #print(credlist)
 
-engine = ScoringEngine(60, 5, 30, 10, 30, 100)
+#engine = ScoringEngine(60, 5, 30, 10, 30, 100)
+
+scores = ScoreBreakdown(
+    ['ssh', 'http'],
+    10,
+    100
+)
+

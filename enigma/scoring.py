@@ -1,16 +1,12 @@
-import time, tomllib, random, csv, uuid
+import time, uuid
 from os import listdir
 from os.path import isfile, join, splitext
-from enum import Enum
 import random, pickle
 
-from enigma.models import ScoreReport, User, CredListDB
+from enigma.models import User, CredListDB
+from enigma.util import Box, CredList, ScoreBreakdown, possible_services
 from enigma.database import db_session
-from enigma.checks import *
-
-boxes_path = './boxes/'
-creds_path = './creds/'
-possible_services = Service.__subclasses__()
+from enigma.settings import boxes_path, creds_path
 
 class ScoringEngine():
 
@@ -91,78 +87,3 @@ class ScoringEngine():
                 'No teams were found!'
             )
         return teams
-
-class Box():
-
-    def __init__(self, name: str, identifier: int, services: list):
-        self.name = name
-        self.identifier = identifier
-        self.services = services
-    
-    def __repr__(self):
-        return '<{}> named \'{}\' with services {}'.format(type(self).__name__, self.name, self.services)
-
-    @classmethod
-    def compile_services(cls, data: dict):
-        services = list()
-        for service in possible_services:
-            if service.name in data:
-                services.append(service.new(data[service.name]))
-        return services
-
-    @classmethod
-    def new(cls, path: str):
-        with open(join(boxes_path, path), 'rb') as f:
-            data = tomllib.load(f)
-        try:
-            box = cls(
-                splitext(path)[0].lower(), 
-                data['identifier'],
-                cls.compile_services(data),
-                )
-        except:
-            raise RuntimeError(
-                '{} is not configured correctly'.format(path)
-            )
-        return box
-    
-class CredList():
-
-    def __init__(self, name: str, creds: dict):
-        self.name = name
-        self.creds = creds
-
-    def get_random_user(self):
-        chosen = random.choice([self.creds.keys()])
-        return {
-            chosen: self.creds[chosen]
-        }
-    
-    def get_random_user_addon(self, addon: dict):
-        both = list()
-        both.extend(self.creds.keys())
-        both.extend(addon.keys())
-        chosen = random.choice(both)
-        if chosen in self.creds.keys():
-            return {
-                chosen: self.creds[chosen]
-            }
-        else:
-            return {
-                chosen: addon[chosen]
-            }
-    
-    def pcr(self, updated_creds: dict):
-        self.creds.update(updated_creds)
-
-    def __repr__(self):
-        return '<{}> with name {} and {} creds'.format(type(self).__name__, self.name, len(self.creds.keys()))
-
-    @classmethod
-    def new(cls, path: str):
-        with open(join(creds_path, path), 'r+') as f:
-            data = csv.reader(f)
-            creds = dict()
-            for row in data:
-                creds.update({row[0]: row[1]})
-        return cls(splitext(path)[0].lower(), creds)
