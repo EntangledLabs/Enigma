@@ -3,6 +3,7 @@ from sqlalchemy.orm import validates
 
 from enigma.database import Base
 from enigma.auth import PWHash
+from enigma.util import ScoreBreakdown
 
 import secrets, string, json
 

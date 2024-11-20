@@ -109,3 +109,26 @@ scores = ScoreBreakdown(
     100
 )
 
+scores.award_service_points('ssh')
+
+for i in range(0, 4):
+    scores.award_service_points('http')
+
+scores.add_service('https')
+
+for i in range(0, 12):
+    scores.award_service_points('https')
+
+scores.award_inject_points(1, 100)
+
+scores.award_inject_points(2, 30)
+
+scores.award_misc_points(30)
+
+scores.award_sla_penalty('https')
+
+scores.award_misc_penalty(5)
+
+scores.remove_service('http')
+
+scores.export_csv('test', './')

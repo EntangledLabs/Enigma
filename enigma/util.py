@@ -112,12 +112,12 @@ class ScoreBreakdown():
     # Updates total score
     def update_total(self):
         total = 0
-        for service, points in self.scores:
+        for service, points in self.scores.items():
             total = total + points
         self.raw_score = total
 
         total = 0
-        for penalty, points in self.penalty_scores:
+        for penalty, points in self.penalty_scores.items():
             total = total + points
         self.penalty_score = total
 
@@ -138,7 +138,7 @@ class ScoreBreakdown():
             raise RuntimeError(
                 'Cannot remove \'{}\' from score, does not exist'.format(name)
             )
-        self.scores.pop('name')
+        self.scores.pop(name)
         self.update_total()
 
     # Point awarding
@@ -210,3 +210,54 @@ class ScoreBreakdown():
         self.update_total()
 
     # Things to do with the data
+    def export_csv(self, name: str, path: str):
+        filepath = join(path, f'{name}-scores.csv')
+        fieldnames = [
+            'point_category',
+            'raw_points',
+            'penalty_points',
+            'total_points'
+        ]
+
+        with open(filepath, 'w+', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+            writer.writeheader()
+            writer.writerow({
+                fieldnames[0]: 'total',
+                fieldnames[1]: self.raw_score,
+                fieldnames[2]: self.penalty_score,
+                fieldnames[3]: self.total_score
+            })
+            
+            rows = list()
+
+            for cat, val in self.scores.items():
+                row = {
+                    fieldnames[0]: cat,
+                    fieldnames[1]: val,
+                    fieldnames[2]: 0,
+                    fieldnames[3]: 0
+                }
+                rows.append(row)
+
+            for cat, val in self.penalty_scores.items():
+                pfield = cat.split('-')
+                if len(pfield) == 2:
+                    pfield = pfield[1]
+                else:
+                    pfield = pfield[0]
+
+                for i in range(0, len(rows)):
+                    if rows[i][fieldnames[0]] == pfield:
+                        rows[i].update({
+                            fieldnames[2]: val
+                        })
+            
+            for i in range(0, len(rows)):
+                rows[i].update({
+                    fieldnames[3]: (rows[i][fieldnames[1]] - rows[i][fieldnames[2]])
+                })
+
+            for row in rows:
+                writer.writerow(row)
