@@ -1,11 +1,12 @@
-from sqlalchemy import Column, Integer, Text, TypeDecorator, Uuid, ForeignKey, Boolean, PickleType
+from sqlalchemy import Column, Integer, Text, TypeDecorator, Uuid, ForeignKey, Boolean
 from sqlalchemy.orm import validates
 
 from enigma.database import Base
 from enigma.auth import PWHash
-from enigma.util import ScoreBreakdown
 
-import secrets, string, json
+import secrets, string, logging
+
+log = logging.getLogger(__name__)
 
 ## Custom SQLAlchemy Types
 
@@ -27,44 +28,53 @@ class PasswordHash(TypeDecorator):
         return self._convert(password)
     
     def _convert(self, value):
+        log.debug('sqlalchemy is conducting PWHash operations')
         if isinstance(value, PWHash):
             return value
         elif isinstance(value, str):
             return PWHash(value[:-32], value[-32:])
+        elif isinstance(value, bytes):
+            return PWHash(value[:-32], value[-32:])
         elif value is not None:
-            raise TypeError(
-                'Cannot convert {} to a PWHash'.format(type(value))
-            )
+            log.error('couldn\'t convert a {} to a PWHash'.format(value))
 
 ## Models
 
-class User(Base):
-    __tablename__ = 'users'
+class Team(Base):
+    __tablename__ = 'teams'
     id = Column(Integer, primary_key=True)
     username = Column(Text, unique=True, nullable=False)
     pw_hash = Column(PasswordHash, nullable=False)
     identifier = Column(Integer, nullable=False)
-    scores = Column(PickleType, nullable=False)
+    score = Column(Integer, nullable=False)
+
+    def __repr__(self):
+        return '<Team> object for {} with id {}, identifier {}, and total score {}'.format(
+            self.username, self.id, self.identifier, self.score
+        )
 
     @validates('pw_hash')
     def _validate_password(self, key, password):
         return getattr(type(self), key).type.validator(password)
-    
+
     def authenticate(self, pw):
+        log.debug('authenticating password for {}'.format(self.username))
         return self.pw_hash == pw
 
     @classmethod
     def generate_password(cls):
-        alphabet = string.ascii_letters + string.digits + string.punctuation
+        log.debug('creating a password')
+        alphabet = string.ascii_letters + string.digits
         return ''.join(secrets.choice(alphabet) for i in range(16))
 
-    
-class CredListDB(Base):
+class TeamCreds(Base):
     __tablename__ = 'credlists'
-    id = Column(Uuid, primary_key=True)
-    team_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    name = Column(Text, nullable=False)
-    creds = Column(PickleType, nullable=False)
+    name = Column(Text, primary_key=True)
+    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
+    creds = Column(Text, nullable=False)
+
+    def __repr__(self):
+        return f'<TeamCreds> object with name {self.name} belonging to team {self.team_id}'
 
 class Inject(Base):
     __tablename__ = 'injects'
@@ -76,7 +86,7 @@ class Inject(Base):
 class ScoreReport(Base):
     __tablename__ = 'scorereports'
     id = Column(Uuid, primary_key=True)
-    team_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
     round = Column(Integer, nullable=False)
     service = Column(Text, nullable=False)
     result = Column(Boolean, nullable=False)
@@ -84,13 +94,13 @@ class ScoreReport(Base):
 class SLAReport(Base):
     __tablename__ = 'slareports'
     id = Column(Uuid, primary_key = True)
-    team_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
     round = Column(Integer, nullable=False)
     service = Column(Text, nullable=False)
 
 class InjectReport(Base):
     __tablename__ = 'injectreports'
     id = Column(Uuid, primary_key=True)
-    team_id = Column(Integer, ForeignKey('users.id'))
+    team_id = Column(Integer, ForeignKey('teams.id'))
     inject_num = Column(Integer, ForeignKey('injects.id'), nullable=False)
     score = Column(Integer, nullable=False)

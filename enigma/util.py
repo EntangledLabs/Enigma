@@ -1,11 +1,13 @@
-import tomllib, random, csv
+import tomllib, random, csv, json
 from os import listdir
 from os.path import isfile, join, splitext
+import logging
 
 from enigma.checks import *
-from enigma.settings import boxes_path, creds_path
+from enigma.models import Team, TeamCreds
+from enigma.settings import boxes_path, creds_path, points_info, possible_services
 
-possible_services = Service.__subclasses__()
+log = logging.getLogger(__name__)
 
 # Class Box
 # Represents a box and its services
@@ -19,13 +21,31 @@ class Box():
     def __repr__(self):
         return '<{}> named \'{}\' with services {}'.format(type(self).__name__, self.name, self.services)
 
+    # Get every service for the box in the format box.service
+    def get_service_names(self):
+        log.debug('getting service names for box {}'.format(self.name))
+        names = list()
+        for service in self.services:
+            names.append(f'{self.name}.{service.name}')
+        return names
+
     # Takes a dict of service config data and creates new Service objects based off of them
     @classmethod
     def compile_services(cls, data: dict):
+        log.debug('compiling a dict of Services')
         services = list()
         for service in possible_services:
             if service.name in data:
                 services.append(service.new(data[service.name]))
+        return services
+    
+    # Performs get_service_names() for every box in the list
+    @classmethod
+    def full_service_list(self, boxes: list):
+        log.debug('getting a list of all service names')
+        services = list()
+        for box in boxes:
+            services.extend(box.get_service_names())
         return services
 
     # Creates a new Box object from a config file
@@ -40,57 +60,10 @@ class Box():
                 cls.compile_services(data),
                 )
         except:
-            raise RuntimeError(
-                '{} is not configured correctly'.format(path)
-            )
+            log.critical('{} is not configured correctly'.format(path))
+            raise SystemExit(0)
+        log.debug('created a Box')
         return box
-
-# Class CredList
-# Represents a set of credentials for use in score checks
-class CredList():
-
-    def __init__(self, name: str, creds: dict):
-        self.name = name
-        self.creds = creds
-
-    # Returns a random user and password
-    def get_random_user(self):
-        chosen = random.choice([self.creds.keys()])
-        return {
-            chosen: self.creds[chosen]
-        }
-    
-    # Returns a random user and password but this time with additional options
-    def get_random_user_addon(self, addon: dict):
-        both = list()
-        both.extend(self.creds.keys())
-        both.extend(addon.keys())
-        chosen = random.choice(both)
-        if chosen in self.creds.keys():
-            return {
-                chosen: self.creds[chosen]
-            }
-        else:
-            return {
-                chosen: addon[chosen]
-            }
-    
-    # Wrapper for dict.update() because i want to type CredList.pcr()
-    def pcr(self, updated_creds: dict):
-        self.creds.update(updated_creds)
-
-    def __repr__(self):
-        return '<{}> with name {} and {} creds'.format(type(self).__name__, self.name, len(self.creds.keys()))
-
-    # Creates a new CredList from a CSV
-    @classmethod
-    def new(cls, path: str):
-        with open(join(creds_path, path), 'r+') as f:
-            data = csv.reader(f)
-            creds = dict()
-            for row in data:
-                creds.update({row[0]: row[1]})
-        return cls(splitext(path)[0].lower(), creds)
 
 # Class ScoreBreakdown
 # A class to store every single scoring option
@@ -98,7 +71,7 @@ class CredList():
 # Does not track score history, those are in the ScoreReport records
 class ScoreBreakdown():
 
-    def __init__(self, services: list, service_points: int, sla_points: int):
+    def __init__(self, team: int, services: list, service_points: int, sla_points: int):
         self.total_score = 0
         self.raw_score = 0
         self.penalty_score = 0
@@ -109,8 +82,14 @@ class ScoreBreakdown():
         self.service_points = service_points
         self.sla_points = sla_points
 
+        self.team = team
+
+    def __repr__(self):
+        return '<{}> object with a total score of {}'.format(type(self).__name__, self.total_score)
+
     # Updates total score
     def update_total(self):
+        log.debug('recalculated score total for team {}'.format(self.team))
         total = 0
         for service, points in self.scores.items():
             total = total + points
@@ -122,48 +101,55 @@ class ScoreBreakdown():
         self.penalty_score = total
 
         self.total_score = self.raw_score - self.penalty_score
+        
+        team = db_session.get(Team, self.team)
+        team.score = self.total_score
+        db_session.commit()
+        db_session.close()
+        log.debug('new total for team {} is {}'.format(self.team, self.total_score))
 
     # Service adding/removal
     def add_service(self, name: str):
+        log.debug('adding service {} for team {}'.format(name, self.team))
         if name in self.scores.keys():
-            raise RuntimeError(
-                'Cannot add \'{}\' to score, already exists'.format(name)
-            )
+            log.error('cannot add \'{}\' to score, already exists'.format(name))
+            return
         self.scores.update({
             name: 0
         })
 
     def remove_service(self, name: str):
+        log.debug('removing service {} for team {}'.format(name, self.team))
         if name not in self.scores.keys():
-            raise RuntimeError(
-                'Cannot remove \'{}\' from score, does not exist'.format(name)
-            )
+            log.error('cannot remove \'{}\' from score, does not exist'.format(name))
+            return
         self.scores.pop(name)
         self.update_total()
 
     # Point awarding
     def award_service_points(self, service: str):
+        log.debug('awarding points for service {} for team {}'.format(service, self.team))
         if service not in self.scores.keys():
-            raise RuntimeError(
-                'Service \'{}\' does not exist, cannot award points'.format(service)
-            )
+            log.error('service \'{}\' does not exist, cannot award points'.format(service))
+            return
         self.scores.update({
             service: (self.scores.pop(service) + self.service_points)
         })
         self.update_total()
 
     def award_inject_points(self, inject_num: int, points: int):
+        log.debug('awarding inject points for inject {} for team {}'.format(inject_num, self.team))
         inject_str = f'inject{inject_num}'
         if inject_str in self.scores.keys():
-            raise RuntimeError(
-                'Cannot add inject {} to score, already exists'.format(inject_num)
-            )
+            log.error('cannot add inject {} to score, already exists'.format(inject_num))
+            return
         self.scores.update({
             inject_str: points
         })
         self.update_total()
     
     def award_correction_points(self, points: int):
+        log.debug('awarding correction of {} for team {}'.format(points, self.team))
         if 'correction' not in self.scores.keys():
             self.scores.update({
                 'correction': points
@@ -175,6 +161,7 @@ class ScoreBreakdown():
         self.update_total()
 
     def award_misc_points(self, points: int):
+        log.debug('awarding {} misc points for team {}'.format(points, self.team))
         if 'misc' not in self.scores.keys():
             self.scores.update({
                 'misc': points
@@ -187,6 +174,7 @@ class ScoreBreakdown():
     
     # Point deductions
     def award_sla_penalty(self, service: str):
+        log.debug('awarding sla penalty for service {} for team {}'.format(service, self.team))
         sla_str = f'sla-{service}'
         if sla_str not in self.penalty_scores.keys():
             self.penalty_scores.update({
@@ -199,6 +187,7 @@ class ScoreBreakdown():
         self.update_total()
 
     def award_misc_penalty(self, points: int):
+        log.debug('awarding misc penalty {} for service {} for team {}'.format(points, self.team))
         if 'misc' not in self.penalty_scores.keys():
             self.penalty_scores.update({
                 'misc': points
@@ -261,3 +250,96 @@ class ScoreBreakdown():
 
             for row in rows:
                 writer.writerow(row)
+        log.info('exported a score breakdown to {}'.format(filepath))
+
+    # Creates a new ScoreBreakdown object from the config info
+    @classmethod
+    def new(cls, team: id, services: list):
+        log.debug('created a ScoreBreakdown')
+        return cls(
+            team,
+            services,
+            points_info['check_points'],
+            points_info['sla_penalty']
+        )
+    
+# Class TeamManager
+# Keeps a team's ScoreBreakdown and cred lists in one place
+# Also interacts with the database for those things
+class TeamManager():
+
+    def __init__(self, id: int, sb: ScoreBreakdown, credlists: dict):
+        self.id = id
+        self.scores = sb
+
+        for name, creds in credlists.items():
+            db_session.add(
+                TeamCreds(
+                    name = f'{self.id}-{name}',
+                    team_id = self.id,
+                    creds = json.dumps(creds)
+                )
+            )
+        db_session.commit()
+        db_session.close()
+
+    def __repr__(self):
+        return '<{}> with team id {}, scores object {}, and credlist with {}'.format(
+            type(self).__name__,
+            self.id,
+            self.scores,
+            db_session.query(TeamCreds).filter(TeamCreds.team_id == self.id).all()
+        )
+
+    # Returns a dict with all of the creds
+    # Mostly used for debugging
+    def get_all_creds(self) -> dict:
+        log.debug('getting a dict of all creds for team {}'.format(self.id))
+        data = db_session.query(TeamCreds).filter(TeamCreds.team_id == self.id).all()
+        credslist = dict()
+        for creds in data:
+            credslist.update({
+                creds.name.split('-')[1]: json.loads(creds.creds)
+            })
+        return credslist
+
+    # Returns a random user and password for use in service check
+    # Parameter credlists is a list of names of the credlists to choose from
+    def get_random_cred(self, credlists: list) -> dict:
+        log.debug('choosing random user creds for team {}'.format(self.id))
+        chosen_list = json.loads(db_session.query(TeamCreds).filter(TeamCreds.name == f'{self.id}-{random.choice(credlists)}').all()[0].creds)
+        chosen = random.choice(list(chosen_list.items()))
+        choice = {
+            chosen[0]: chosen[1]
+        }
+        log.debug('chose {} for team {}'.format(choice, self.id))
+        return choice
+
+    # Performs a password change request
+    # Parameter new_creds is a 2D dict, where the first key is the credlist name and the second is the user
+    def pcr(self, new_creds: dict) -> None:
+        log.debug('performing pcr request for team {}'.format(self.id))
+        for credlist, creds in new_creds.items():
+            team = db_session.query(TeamCreds).filter(TeamCreds.name == f'{self.id}-{credlist}').all()[0]
+            mod_creds = json.loads(team.creds)
+            for user in creds.keys():
+                if user not in mod_creds:
+                    log.warning('User {} does not exist! Ignoring'.format(user))
+                else:
+                    mod_creds.update({
+                        user: creds.get(user)
+                    })
+            team.creds = json.dumps(mod_creds)
+            db_session.commit()
+
+    @classmethod
+    def new(cls, id: int, services: list, cred_data: dict):
+        log.debug('created new TeamManager')
+        return cls(
+            id,
+            ScoreBreakdown.new(
+                id,
+                services
+            ),
+            cred_data.copy()
+        )

@@ -1,12 +1,15 @@
 import time, uuid
 from os import listdir
 from os.path import isfile, join, splitext
-import random, pickle
+import random, csv
+import logging
 
-from enigma.models import User, CredListDB
-from enigma.util import Box, CredList, ScoreBreakdown, possible_services
+from enigma.models import Team, TeamCreds
+from enigma.util import Box, ScoreBreakdown, TeamManager
 from enigma.database import db_session
-from enigma.settings import boxes_path, creds_path
+from enigma.settings import boxes_path, creds_path, possible_services
+
+log = logging.getLogger(__name__)
 
 class ScoringEngine():
 
@@ -14,17 +17,14 @@ class ScoringEngine():
         
         self.boxes = self.find_boxes()
         self.teams = self.find_teams()
-
-        self.create_credlists()
+        self.credlists = self.find_credlists()
 
         if check_jitter >= check_delay:
-            raise ValueError(
-                'Check jitter cannot be larger than or equal to check delay'
-            )
+            log.critical('Check jitter cannot be larger than or equal to check delay, terminating...')
+            raise SystemExit(0)
         if check_timeout >= check_delay - check_jitter:
-            raise ValueError(
-                'Check timeout must be less than delay - jitter'
-            )
+            log.critical('Check timeout must be less than delay - jitter, terminating...')
+            raise SystemExit(0)
         
         self.check_delay = check_delay
         self.check_jitter = check_jitter
@@ -42,36 +42,48 @@ class ScoringEngine():
     def pause_scoring(self):
         pass
 
-    def create_credlists(self):
+    @classmethod
+    def create_managers(cls, teams: list, services:list, credlists: dict) -> dict:
+        log.debug('creating managers')
+        managers = dict()
+        for team in teams:
+            managers.update({
+                team.id: TeamManager.new(
+                    team.id,
+                    services,
+                    credlists
+                )
+            })
+        return managers
+
+    @classmethod
+    def find_credlists(cls) -> dict:
+        log.debug('finding credlists')
         cred_files = [f for f in listdir(creds_path) if isfile(join(creds_path, f)) and splitext(f)[-1].lower() == '.csv']
         if len(cred_files) == 0:
-            raise RuntimeError(
-                'No credlists found!'
-            )
-        credlists = list()
+            log.critical('No credlists were specified, terminating...')
+            raise SystemExit(0)
+        credlists = dict()
+
         for path in cred_files:
-            credlists.append(CredList.new(path))
-        
-        for team in self.teams:
-            for credlist in credlists:
-                db_session.add(
-                    CredListDB(
-                        id = uuid.uuid4(),
-                        team_id = team.id,
-                        name = credlist.name,
-                        creds = pickle.dumps(credlist)
-                    )
-                )
-                db_session.commit()
-                db_session.close()
+            with open(join(creds_path, path), 'r+') as f:
+                data = csv.reader(f)
+                creds = dict()
+                for row in data:
+                    creds.update({row[0]: row[1]})
+                credlists.update({
+                    splitext(path)[0].lower(): creds
+                })
+
+        return credlists
 
     @classmethod
     def find_boxes(cls) -> list:
+        log.debug('finding boxes')
         box_files = [f for f in listdir(boxes_path) if isfile(join(boxes_path, f)) and splitext(f)[-1].lower() == '.toml']
         if len(box_files) == 0:
-            raise RuntimeError(
-                'No boxes found!'
-            )
+            log.critical('No boxes were specified, terminating...')
+            raise SystemExit(0)
         boxes = list()
         for path in box_files:
             boxes.append(Box.new(path))
@@ -80,10 +92,10 @@ class ScoringEngine():
     
     @classmethod
     def find_teams(cls) -> list:
-        teams = db_session.query(User).all()
+        log.debug('finding teams')
+        teams = db_session.query(Team).filter(Team.id != 0).all()
         db_session.close()
         if teams is None:
-            raise RuntimeError(
-                'No teams were found!'
-            )
+            log.critical('No teams were specified, terminating...')
+            raise SystemExit(0)
         return teams

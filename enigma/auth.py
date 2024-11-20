@@ -1,4 +1,7 @@
 import hashlib, os
+import logging
+
+log = logging.getLogger(__name__)
 
 # PWHash class
 # A class to hold password hashes for verification.
@@ -33,4 +36,5 @@ class PWHash():
     def new(cls, password, salt_=os.urandom(32)):
         if isinstance(password, str):
             password = password.encode('utf-8')
+        log.debug('Created PWHash')
         return cls(hashlib.scrypt(password, salt=salt_, n=16384, r=8, p=1), salt_)

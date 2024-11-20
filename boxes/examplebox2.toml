@@ -1,0 +1,13 @@
+identifier = 2                          # Host number for the box IP
+
+# SSH check
+[ssh]
+port = 22                               # Port to check, default 22
+auth = ['plaintext']                    # Authentication methods, currently only supporting [plaintext, pubkey], default plaintext
+keyfile = ''                            # Private key file path to test pubkey, empty string if not using pubkey
+credlist = ['examplecreds']             # Credlist to use for authentication
+
+# http check
+[http]
+port = 80                               # Port to check, default 80
+path = 'index.html'                     # Path to check, defaults to site root
