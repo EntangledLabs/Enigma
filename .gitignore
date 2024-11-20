@@ -17,6 +17,6 @@ build/
 
 *.db
 
-logs/
+logs/*
 test.py
 testpws.txt

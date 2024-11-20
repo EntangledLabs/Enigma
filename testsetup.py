@@ -4,6 +4,11 @@ from enigma.util import ScoreBreakdown, Box
 from enigma.models import Team
 from enigma.scoring import ScoringEngine
 
+################ IMPORTANT ################
+# This script will setup 5 teams and their associated records
+# This is for testing and development purposes ONLY
+# Do not run in production, if you do by accident, call del_db first
+
 passwords = [Team.generate_password() for i in range(0,5)]
 
 with open('testpws.txt', 'w+') as f:

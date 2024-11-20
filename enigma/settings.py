@@ -1,6 +1,7 @@
 import tomllib
 import logging
 from datetime import datetime
+from os.path import join
 
 from dotenv import load_dotenv
 
@@ -25,4 +26,5 @@ log_level = {
     'critical': logging.CRITICAL
 }.get('debug')
 
-log_file = 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M'))
+log_file = join(log_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S'))
+)
