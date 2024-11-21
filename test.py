@@ -19,32 +19,29 @@ db_session.query(TeamCreds).delete()
 db_session.query(SLAReport).delete()
 db_session.query(ScoreHistory).delete()
 
-services = Box.full_service_list(ScoringEngine.find_boxes())
+boxes = ScoringEngine.find_boxes()
+services = Box.full_service_list(boxes)
 creds = ScoringEngine.find_credlists()
-
-manager = TeamManager.new(1, services, creds)
+teams = ScoringEngine.find_teams()
+managers = ScoringEngine.create_managers(teams, services, creds)
 
 for i in range(1, 11):
-    db_session.add(
-        ScoreReport(
-            team_id = 1,
-            round = i,
-            service = 'examplebox.ssh',
-            result = random.choice([True, False])
-        )
-    )
-    db_session.add(
-        ScoreReport(
-            team_id = 1,
-            round = i,
-            service = 'examplebox.http',
-            result = random.choice([True, False])
-        )
-    )
-    db_session.commit()
-    
-    manager.tabulate_scores(i)
+    for service in services:
+        for team, manager in managers.items():
+            db_session.add(
+                ScoreReport(
+                    team_id = team,
+                    round = i,
+                    service = service,
+                    result = random.choice([True, False])
+                )
+            )
+            db_session.commit()
+            db_session.close()
 
-db_session.close()
+            manager.tabulate_scores(i)
+            
+for team, manager in managers.items():
+    manager.scores.export_csv('testscores', './')
 
-manager.scores.export_csv('testscores', './')
+#TeamManager.graph_scores(managers)

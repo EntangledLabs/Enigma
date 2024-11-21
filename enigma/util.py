@@ -4,6 +4,7 @@ from os.path import isfile, join, splitext
 import logging
 
 import plotly.express as px
+import pandas as pd
 
 from enigma.checks import *
 from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory
@@ -382,6 +383,35 @@ class TeamManager():
 
         log.debug('completed score tabulation for team {} for round {}'.format(self.id, round))
 
+    # Creates a graph based on score history
+    @classmethod
+    def graph_scores(cls, managers: dict):
+        log.debug('graphing scores')
+        data = dict()
+        row_names = list()
+        team_nums = list()
+
+        for team in managers.keys():
+            row_names.append(
+                db_session.get(Team, team).username
+            )
+            db_session.close()
+            team_nums.append(team)
+
+        last_round = max(db_session.query(ScoreHistory.round).order_by(ScoreHistory.round).all())[0]
+
+        for round in range(1, last_round + 1):
+            round_data = list()
+            for team in team_nums:
+                round_data.append(
+                    db_session.query(ScoreHistory.score).filter(ScoreHistory.team_id == team, ScoreHistory.round == round)
+                )
+                db_session.close()
+            data.update({
+                round: round_data
+            })
+        print(data)
+
     # Methods related to creds
 
     # Returns a dict with all of the creds
@@ -444,7 +474,7 @@ class TeamManager():
 
     @classmethod
     def new(cls, id: int, services: list, cred_data: dict):
-        log.debug('created new TeamManager')
+        log.debug('created new TeamManager for team {}'.format(id))
         return cls(
             id,
             ScoreBreakdown.new(

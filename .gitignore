@@ -19,3 +19,4 @@ build/
 
 logs/*.log
 testpws.txt
+testscores.csv

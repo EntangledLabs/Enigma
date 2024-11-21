@@ -18,10 +18,10 @@ class ScoringEngine():
         # Initialize environment information
         self.boxes = self.find_boxes()
         self.credlists = self.find_credlists()
-        self.managers = ScoringEngine.create_managers(
-                ScoringEngine.find_teams(), 
-                Box.full_service_list(ScoringEngine.find_boxes()), 
-                ScoringEngine.find_credlists()
+        self.managers = self.create_managers(
+                self.find_teams(), 
+                Box.full_service_list(self.boxes), 
+                self.find_credlists()
             )
 
         # Verify settings
