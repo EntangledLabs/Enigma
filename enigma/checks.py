@@ -39,8 +39,8 @@ class Service(ABC):
     # A dict 'data' is passed. Each key in 'data' should refer to a parameter in the __init__
     # e.x. data = {'port': 80} will correspond to Service(port = 80)
     # Default values assignment should be handled here rather than in the __init__
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def new(cls, data: dict):
         pass
 
