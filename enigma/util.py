@@ -3,6 +3,8 @@ from os import listdir
 from os.path import isfile, join, splitext
 import logging
 
+import plotly.express as px
+
 from enigma.checks import *
 from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory
 from enigma.settings import boxes_path, creds_path, points_info, possible_services
@@ -60,10 +62,11 @@ class Box():
             box = cls(
                 splitext(path)[0].lower(), 
                 data['identifier'],
-                cls.compile_services(data),
+                cls.compile_services(data)
                 )
         except:
             log.critical('{} is not configured correctly'.format(path))
+            log.debug('{} {} {}'.format(splitext(path)[0].lower(), data['identifier'], cls.compile_services(data)))
             raise SystemExit(0)
         log.debug('created a Box')
         return box
@@ -203,7 +206,7 @@ class ScoreBreakdown():
 
     # Things to do with the data
     def export_csv(self, name: str, path: str):
-        filepath = join(path, f'{name}-scores.csv')
+        filepath = join(path, f'{name}.csv')
         fieldnames = [
             'point_category',
             'raw_points',
@@ -316,9 +319,6 @@ class TeamManager():
         log.debug('tabulating scores for round {} for team {}'.format(round, self.id))
         score_reports = db_session.query(ScoreReport).filter(ScoreReport.round == round, ScoreReport.team_id == self.id).all()
 
-        print(round)
-        print(self.sla_tracker)
-
         pertinent_info = list()
         for report in score_reports:
             pertinent_info.append({
@@ -380,10 +380,7 @@ class TeamManager():
         db_session.commit()
         db_session.close()
 
-        print(self.sla_tracker)
-
         log.debug('completed score tabulation for team {} for round {}'.format(self.id, round))
-
 
     # Methods related to creds
 

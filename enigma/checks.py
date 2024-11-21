@@ -10,8 +10,10 @@ log = logging.getLogger(__name__)
 # Add any Service classes to this file or to a file importing Service from enigma.checks
 class Service(ABC):
 
+    # Attribute name should be the name of the service
+    # name = 'service'
+
     # The __init__ must contain the specified parameters for the service
-    # self.name should be the name of the service
     # __init__ should test the parameters for proper use and raise a log.critical() if something isn't right
     @abstractmethod
     def __init__(self):
@@ -50,8 +52,9 @@ class Service(ABC):
 # If a connection is established, the check passes
 class SSHService(Service):
 
+    name = 'ssh'
+
     def __init__(self, credlist: list[str], port: int, auth: list, keyfile: str):
-        self.name = 'ssh'
         if not credlist:
             log.critical('Credlist was not defined for SSH, terminating...')
             raise SystemExit(0)
@@ -91,8 +94,9 @@ class SSHService(Service):
 # If an HTTP GET request is OK, the check passes
 class HTTPService(Service):
 
+    name = 'http'
+
     def __init__(self, port: int, path: str):
-        self.name = 'http'
         self.port = port
         if path:
             self.path = path
@@ -119,8 +123,9 @@ class HTTPService(Service):
 # If an HTTPS GET request is OK, the check passes
 class HTTPSService(Service):
 
+    name = 'https'
+
     def __init__(self, port: int, path: str):
-        self.name = 'https'
         self.port = port
         if path:
             self.path = path

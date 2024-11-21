@@ -101,7 +101,7 @@ class InjectReport(Base):
     __tablename__ = 'injectreports'
     id = Column(Uuid, primary_key=True)
     team_id = Column(Integer, ForeignKey('teams.id'))
-    inject_num = Column(Integer, ForeignKey('injects.id'), nullable=False)
+    inject_num = Column(Integer, nullable=False)
     score = Column(Integer, nullable=False)
 
 class ScoreHistory(Base):
