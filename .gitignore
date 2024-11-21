@@ -17,5 +17,5 @@ build/
 
 *.db
 
-logs/*
+logs/*.log
 testpws.txt
