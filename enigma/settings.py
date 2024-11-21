@@ -10,6 +10,7 @@ from enigma.checks import Service
 boxes_path = './boxes/'
 creds_path = './creds/'
 log_path = './logs/'
+injects_path = './injects/'
 
 points_info = {
     'check_points': 10,

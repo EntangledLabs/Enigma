@@ -267,9 +267,17 @@ class ScoreBreakdown():
         )
 
 # Class InjectManager
-# Keeps track of injects and scores
+# Keeps track of all injects
 class InjectManager():
-    pass
+
+    def __init__(self):
+        pass
+
+    def add_inject(self):
+        pass
+
+    def remove_inject(self):
+        pass
 
 # Class TeamManager
 # Keeps a team's ScoreBreakdown and cred lists in one place
@@ -387,9 +395,22 @@ class TeamManager():
         credslist = dict()
         for creds in data:
             credslist.update({
-                creds.name.split('-')[1]: json.loads(creds.creds)
+                creds.name: json.loads(creds.creds)
             })
         return credslist
+
+    # Adds a new credslist
+    def add_creds(self, credslist: dict):
+        log.debug('adding new credslist for team {}'.format(self.id))
+        db_session.add(
+            TeamCreds(
+                name = credslist.items()[0].keys()[0],
+                team_id = self.id,
+                creds = credslist.items()[0].keys()[1]
+            )
+        )
+        db_session.commit()
+        db_session.close()
 
     # Returns a random user and password for use in service check
     # Parameter credlists is a list of names of the credlists to choose from

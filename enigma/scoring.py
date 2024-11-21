@@ -102,3 +102,7 @@ class ScoringEngine():
             raise SystemExit(0)
         log.debug('teams found: {}'.format(teams))
         return teams
+    
+    @classmethod
+    def find_injects(cls) -> list:
+        log.debug('finding injects')

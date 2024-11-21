@@ -1,0 +1,19 @@
+name = 'Example Inject'
+description = '''
+I guess this is a description
+'''
+[[rubric]]
+
+[rubric.professionalism]
+possible_score = 100
+weight = 0.3
+description = '''
+Submission should be professional
+'''
+
+[rubric.accuracy]
+possible_score = 100
+weight = 0.7
+description = '''
+Submission should have accurate information
+'''

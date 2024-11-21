@@ -76,13 +76,6 @@ class TeamCreds(Base):
     def __repr__(self):
         return f'<TeamCreds> object with name {self.name} belonging to team {self.team_id}'
 
-class Inject(Base):
-    __tablename__ = 'injects'
-    id = Column(Integer, primary_key=True)
-    name = Column(Text, nullable=False)
-    desc = Column(Text)
-    file = Column(Text)
-
 class ScoreReport(Base):
     __tablename__ = 'scorereports'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key=True)
