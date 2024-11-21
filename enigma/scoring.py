@@ -7,32 +7,32 @@ import logging
 from enigma.models import Team, TeamCreds
 from enigma.util import Box, ScoreBreakdown, TeamManager
 from enigma.database import db_session
-from enigma.settings import boxes_path, creds_path, possible_services
+from enigma.settings import boxes_path, creds_path, possible_services, round_info
 
 log = logging.getLogger(__name__)
 
 class ScoringEngine():
 
-    def __init__(self, check_delay: int, check_jitter: int, check_timeout: int, check_points: int, sla_req: int, sla_penalty: int):
+    def __init__(self):
         
+        # Initialize environment information
         self.boxes = self.find_boxes()
         self.credlists = self.find_credlists()
-        managers = ScoringEngine.create_managers(ScoringEngine.find_teams(), Box.full_service_list(ScoringEngine.find_boxes()), ScoringEngine.find_credlists())
+        self.managers = ScoringEngine.create_managers(
+                ScoringEngine.find_teams(), 
+                Box.full_service_list(ScoringEngine.find_boxes()), 
+                ScoringEngine.find_credlists()
+            )
 
-        if check_jitter >= check_delay:
+        # Verify settings
+        if round_info['check_jitter'] >= round_info['check_delay']:
             log.critical('Check jitter cannot be larger than or equal to check delay, terminating...')
             raise SystemExit(0)
-        if check_timeout >= check_delay - check_jitter:
+        if round_info['check_timeout'] >= round_info['check_delay'] - round_info['check_jitter']:
             log.critical('Check timeout must be less than delay - jitter, terminating...')
             raise SystemExit(0)
-        
-        self.check_delay = check_delay
-        self.check_jitter = check_jitter
-        self.check_timeout = check_timeout
-        self.check_points = check_points
-        self.sla_req = sla_req
-        self.sla_penalty = sla_penalty
 
+        # Starting from round 1
         self.round = 1
 
     def start_scoring(self):

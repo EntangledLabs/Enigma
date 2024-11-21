@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 # Represents a box and its services
 class Box():
 
-    def __init__(self, name: str, identifier: int, services: list):
+    def __init__(self, name: str, identifier: int, services: list[Service]):
         self.name = name
         self.identifier = identifier
         self.services = services
@@ -43,7 +43,7 @@ class Box():
     
     # Performs get_service_names() for every box in the list
     @classmethod
-    def full_service_list(self, boxes: list):
+    def full_service_list(cls, boxes: list):
         log.debug('getting a list of all service names')
         services = list()
         for box in boxes:
@@ -74,7 +74,7 @@ class Box():
 # Does not track score history, those are in the ScoreReport records
 class ScoreBreakdown():
 
-    def __init__(self, team: int, services: list, service_points: int, sla_points: int):
+    def __init__(self, team: int, services: list[str], service_points: int, sla_points: int):
         self.total_score = 0
         self.raw_score = 0
         self.penalty_score = 0
@@ -414,7 +414,7 @@ class TeamManager():
 
     # Returns a random user and password for use in service check
     # Parameter credlists is a list of names of the credlists to choose from
-    def get_random_cred(self, credlists: list) -> dict:
+    def get_random_cred(self, credlists: list[str]) -> dict:
         log.debug('choosing random user creds for team {}'.format(self.id))
         chosen_list = json.loads(
             db_session.query(TeamCreds).filter(
