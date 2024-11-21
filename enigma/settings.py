@@ -13,7 +13,14 @@ log_path = './logs/'
 
 points_info = {
     'check_points': 10,
-    'sla_penalty': 100
+    'sla_penalty': 100,
+    'sla_requirement': 30
+}
+
+round_info = {
+    'check_time': 60,
+    'check_jitter': 10,
+    'check_timeout': 30
 }
 
 possible_services = Service.__subclasses__()
@@ -24,7 +31,7 @@ log_level = {
     'warn': logging.WARNING,
     'error': logging.ERROR,
     'critical': logging.CRITICAL
-}.get('debug')
+}.get('info')
 
 log_file = join(log_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S'))
 )

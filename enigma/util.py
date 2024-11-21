@@ -1,10 +1,10 @@
-import tomllib, random, csv, json
+import tomllib, random, csv, json, uuid
 from os import listdir
 from os.path import isfile, join, splitext
 import logging
 
 from enigma.checks import *
-from enigma.models import Team, TeamCreds
+from enigma.models import Team, TeamCreds, ScoreReport, SLAReport
 from enigma.settings import boxes_path, creds_path, points_info, possible_services
 
 log = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ class Box():
         names = list()
         for service in self.services:
             names.append(f'{self.name}.{service.name}')
+        log.debug('service names found: {}'.format(names))
         return names
 
     # Takes a dict of service config data and creates new Service objects based off of them
@@ -37,6 +38,7 @@ class Box():
         for service in possible_services:
             if service.name in data:
                 services.append(service.new(data[service.name]))
+        log.debug('services found: {}'.format(services))
         return services
     
     # Performs get_service_names() for every box in the list
@@ -46,6 +48,7 @@ class Box():
         services = list()
         for box in boxes:
             services.extend(box.get_service_names())
+        log.debug('all services found: {}'.format(services))
         return services
 
     # Creates a new Box object from a config file
@@ -271,6 +274,7 @@ class TeamManager():
     def __init__(self, id: int, sb: ScoreBreakdown, credlists: dict):
         self.id = id
         self.scores = sb
+        self.sla_tracker = dict()
 
         for name, creds in credlists.items():
             db_session.add(
@@ -290,6 +294,60 @@ class TeamManager():
             self.scores,
             db_session.query(TeamCreds).filter(TeamCreds.team_id == self.id).all()
         )
+
+    # Methods related to scores
+    
+    # Gathers all score reports for a round
+    # This should be called at the end of every round
+    def tabulate_scores(self, round: int):
+        log.debug('tabulating scores for round {} for team {}'.format(round, self.id))
+        score_reports = db_session.query(ScoreReport).filter(ScoreReport.round == round, ScoreReport.team_id == self.id).all()
+
+        pertinent_info = list()
+        for report in score_reports:
+            pertinent_info.append({
+                'service': report.service,
+                'result': report.result
+            })
+
+        db_session.close()
+
+        log.debug('score reports found')
+        for report in pertinent_info:
+            if report.get('result'):
+                log.info('awarding service points to team {} for service {}'.format(self.id, report.get('service')))
+                self.scores.award_service_points(report.get('service'))
+                if report.get('service') in self.sla_tracker:
+                    self.sla_tracker.pop(report.get('service'))
+            else:
+                if report.get('service') not in self.sla_tracker.keys():
+                    log.info('starting to track team {} SLA violation for service {}'.format(self.id, report.get('service')))
+                    self.sla_tracker.update({
+                        report.get('service'): 1
+                    })
+                else:
+                    if self.sla_tracker.get(report.get('service')) == points_info.get('sla_requirement'):
+                        log.info('full sla violation for team {} service {}, deducting points'.format(self.id, report.get('service')))
+                        self.scores.award_sla_penalty(report.get('service'))
+                        db_session.add(
+                            SLAReport(
+                                id = uuid.uuid4(),
+                                team_id = self.id,
+                                round = round,
+                                service = report.get('service')
+                            )
+                        )
+                        db_session.commit()
+                    else:
+                        log.info('sla violation tracking extended for team {} service {}'.format(self.id, report.get('service')))
+                        self.sla_tracker.update({
+                            report.get('service'): self.sla_tracker.pop(report.get('service')) + 1
+                        })
+        db_session.close()
+        log.debug('completed score tabulation for team {} for round {}'.format(self.id, round))
+
+
+    # Methods related to creds
 
     # Returns a dict with all of the creds
     # Mostly used for debugging

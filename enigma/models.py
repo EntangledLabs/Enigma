@@ -91,16 +91,31 @@ class ScoreReport(Base):
     service = Column(Text, nullable=False)
     result = Column(Boolean, nullable=False)
 
+    def __repr__(self):
+        return '<ScoreReport> object representing team {} round {} for service {} with result {}'.format(
+            self.team_id,
+            self.round,
+            self.service,
+            self.result
+        )
+
 class SLAReport(Base):
     __tablename__ = 'slareports'
     id = Column(Uuid, primary_key = True)
     team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
-    round = Column(Integer, nullable=False)
-    service = Column(Text, nullable=False)
+    round = Column(Integer, ForeignKey('scorereports.round'), nullable=False)
+    service = Column(Text, ForeignKey('scorereports.service'), nullable=False)
 
 class InjectReport(Base):
     __tablename__ = 'injectreports'
     id = Column(Uuid, primary_key=True)
     team_id = Column(Integer, ForeignKey('teams.id'))
     inject_num = Column(Integer, ForeignKey('injects.id'), nullable=False)
+    score = Column(Integer, nullable=False)
+
+class ScoreHistory(Base):
+    __tablename__ = 'scorehistory'
+    team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
+    round = Column(Integer, ForeignKey('scorereports.round'), nullable=False)
+    service = Column(Text, ForeignKey('scorereports.service'), nullable=False)
     score = Column(Integer, nullable=False)

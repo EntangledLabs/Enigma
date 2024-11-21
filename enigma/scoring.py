@@ -16,8 +16,8 @@ class ScoringEngine():
     def __init__(self, check_delay: int, check_jitter: int, check_timeout: int, check_points: int, sla_req: int, sla_penalty: int):
         
         self.boxes = self.find_boxes()
-        self.teams = self.find_teams()
         self.credlists = self.find_credlists()
+        managers = ScoringEngine.create_managers(ScoringEngine.find_teams(), Box.full_service_list(ScoringEngine.find_boxes()), ScoringEngine.find_credlists())
 
         if check_jitter >= check_delay:
             log.critical('Check jitter cannot be larger than or equal to check delay, terminating...')
@@ -32,6 +32,8 @@ class ScoringEngine():
         self.check_points = check_points
         self.sla_req = sla_req
         self.sla_penalty = sla_penalty
+
+        self.round = 1
 
     def start_scoring(self):
         pass
@@ -74,7 +76,7 @@ class ScoringEngine():
                 credlists.update({
                     splitext(path)[0].lower(): creds
                 })
-
+        log.debug('credlists found: {}'.format(credlists))
         return credlists
 
     @classmethod
@@ -87,7 +89,7 @@ class ScoringEngine():
         boxes = list()
         for path in box_files:
             boxes.append(Box.new(path))
-
+        log.debug('boxes found: {}'.format(boxes))
         return boxes
     
     @classmethod
@@ -98,4 +100,5 @@ class ScoringEngine():
         if teams is None:
             log.critical('No teams were specified, terminating...')
             raise SystemExit(0)
+        log.debug('teams found: {}'.format(teams))
         return teams
