@@ -70,7 +70,7 @@ class Team(Base):
 class TeamCreds(Base):
     __tablename__ = 'credlists'
     name = Column(Text, primary_key=True)
-    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), primary_key=True)
     creds = Column(Text, nullable=False)
 
     def __repr__(self):
@@ -85,10 +85,9 @@ class Inject(Base):
 
 class ScoreReport(Base):
     __tablename__ = 'scorereports'
-    id = Column(Uuid, primary_key=True)
-    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
-    round = Column(Integer, nullable=False)
-    service = Column(Text, nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), primary_key=True)
+    round = Column(Integer, primary_key=True)
+    service = Column(Text, primary_key=True)
     result = Column(Boolean, nullable=False)
 
     def __repr__(self):
@@ -101,10 +100,9 @@ class ScoreReport(Base):
 
 class SLAReport(Base):
     __tablename__ = 'slareports'
-    id = Column(Uuid, primary_key = True)
-    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False)
-    round = Column(Integer, ForeignKey('scorereports.round'), nullable=False)
-    service = Column(Text, ForeignKey('scorereports.service'), nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
+    round = Column(Integer, ForeignKey('scorereports.round'), primary_key = True)
+    service = Column(Text, ForeignKey('scorereports.service'), primary_key = True)
 
 class InjectReport(Base):
     __tablename__ = 'injectreports'
@@ -116,6 +114,5 @@ class InjectReport(Base):
 class ScoreHistory(Base):
     __tablename__ = 'scorehistory'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
-    round = Column(Integer, ForeignKey('scorereports.round'), nullable=False)
-    service = Column(Text, ForeignKey('scorereports.service'), nullable=False)
+    round = Column(Integer, ForeignKey('scorereports.round'), primary_key = True)
     score = Column(Integer, nullable=False)

@@ -4,7 +4,7 @@ from os.path import isfile, join, splitext
 import logging
 
 from enigma.checks import *
-from enigma.models import Team, TeamCreds, ScoreReport, SLAReport
+from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory
 from enigma.settings import boxes_path, creds_path, points_info, possible_services
 
 log = logging.getLogger(__name__)
@@ -265,7 +265,12 @@ class ScoreBreakdown():
             points_info['check_points'],
             points_info['sla_penalty']
         )
-    
+
+# Class InjectManager
+# Keeps track of injects and scores
+class InjectManager():
+    pass
+
 # Class TeamManager
 # Keeps a team's ScoreBreakdown and cred lists in one place
 # Also interacts with the database for those things
@@ -279,7 +284,7 @@ class TeamManager():
         for name, creds in credlists.items():
             db_session.add(
                 TeamCreds(
-                    name = f'{self.id}-{name}',
+                    name = name,
                     team_id = self.id,
                     creds = json.dumps(creds)
                 )
@@ -303,6 +308,9 @@ class TeamManager():
         log.debug('tabulating scores for round {} for team {}'.format(round, self.id))
         score_reports = db_session.query(ScoreReport).filter(ScoreReport.round == round, ScoreReport.team_id == self.id).all()
 
+        print(round)
+        print(self.sla_tracker)
+
         pertinent_info = list()
         for report in score_reports:
             pertinent_info.append({
@@ -321,17 +329,21 @@ class TeamManager():
                     self.sla_tracker.pop(report.get('service'))
             else:
                 if report.get('service') not in self.sla_tracker.keys():
-                    log.info('starting to track team {} SLA violation for service {}'.format(self.id, report.get('service')))
+                    log.info('starting to track team {} SLA violation for service {}, 1 of {}'.format(
+                        self.id, 
+                        report.get('service'),
+                        points_info.get('sla_requirement')
+                        ))
                     self.sla_tracker.update({
                         report.get('service'): 1
                     })
                 else:
-                    if self.sla_tracker.get(report.get('service')) == points_info.get('sla_requirement'):
+                    if self.sla_tracker.get(report.get('service')) == points_info.get('sla_requirement') - 1:
                         log.info('full sla violation for team {} service {}, deducting points'.format(self.id, report.get('service')))
                         self.scores.award_sla_penalty(report.get('service'))
+                        self.sla_tracker.pop(report.get('service'))
                         db_session.add(
                             SLAReport(
-                                id = uuid.uuid4(),
                                 team_id = self.id,
                                 round = round,
                                 service = report.get('service')
@@ -339,11 +351,29 @@ class TeamManager():
                         )
                         db_session.commit()
                     else:
-                        log.info('sla violation tracking extended for team {} service {}'.format(self.id, report.get('service')))
+                        log.info('sla violation tracking extended for team {} service {}, {} of {}'.format(
+                            self.id, 
+                            report.get('service'),
+                            self.sla_tracker.get(report.get('service')),
+                            points_info.get('sla_requirement')
+                            ))
                         self.sla_tracker.update({
                             report.get('service'): self.sla_tracker.pop(report.get('service')) + 1
                         })
         db_session.close()
+
+        db_session.add(
+            ScoreHistory(
+                team_id = self.id,
+                round = round,
+                score = self.scores.total_score
+            )
+        )
+        db_session.commit()
+        db_session.close()
+
+        print(self.sla_tracker)
+
         log.debug('completed score tabulation for team {} for round {}'.format(self.id, round))
 
 
@@ -365,7 +395,11 @@ class TeamManager():
     # Parameter credlists is a list of names of the credlists to choose from
     def get_random_cred(self, credlists: list) -> dict:
         log.debug('choosing random user creds for team {}'.format(self.id))
-        chosen_list = json.loads(db_session.query(TeamCreds).filter(TeamCreds.name == f'{self.id}-{random.choice(credlists)}').all()[0].creds)
+        chosen_list = json.loads(
+            db_session.query(TeamCreds).filter(
+                TeamCreds.name == random.choice(credlists), 
+                TeamCreds.team_id == self.id
+                ).all()[0].creds)
         chosen = random.choice(list(chosen_list.items()))
         choice = {
             chosen[0]: chosen[1]
@@ -378,7 +412,7 @@ class TeamManager():
     def pcr(self, new_creds: dict) -> None:
         log.debug('performing pcr request for team {}'.format(self.id))
         for credlist, creds in new_creds.items():
-            team = db_session.query(TeamCreds).filter(TeamCreds.name == f'{self.id}-{credlist}').all()[0]
+            team = db_session.query(TeamCreds).filter(TeamCreds.name == credlist, TeamCreds.team_id == self.id).all()[0]
             mod_creds = json.loads(team.creds)
             for user in creds.keys():
                 if user not in mod_creds:

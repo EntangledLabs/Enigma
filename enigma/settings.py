@@ -13,8 +13,8 @@ log_path = './logs/'
 
 points_info = {
     'check_points': 10,
-    'sla_penalty': 100,
-    'sla_requirement': 30
+    'sla_penalty': 20,
+    'sla_requirement': 2
 }
 
 round_info = {
@@ -31,7 +31,10 @@ log_level = {
     'warn': logging.WARNING,
     'error': logging.ERROR,
     'critical': logging.CRITICAL
-}.get('info')
+}.get('debug')
 
 log_file = join(log_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S'))
 )
+
+# Can be 'file' and/or 'console'
+log_output = ['file']

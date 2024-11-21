@@ -1,6 +1,6 @@
 import logging
 
-from enigma.settings import log_file, log_level
+from enigma.settings import log_file, log_level, log_output
 
 
 #### Creates a universal logger for Enigma
@@ -33,5 +33,7 @@ file_handler.setFormatter(log_format)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_format)
 
-log.addHandler(file_handler)
-log.addHandler(console_handler)
+if 'file' in log_output:
+    log.addHandler(file_handler)
+if 'console' in log_output:
+    log.addHandler(console_handler)
