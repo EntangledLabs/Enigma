@@ -1,7 +1,8 @@
-import subprocess, random, logging, threading
+import subprocess, random, logging
 from abc import ABC, abstractmethod
 
 from enigma.database import db_session
+from enigma.util import IPAddr
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class SSHService(Service):
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
 
-    def conduct_service_check(self, identifier: int, creds: dict) -> bool:
+    def conduct_service_check(self, addr: IPAddr, creds: dict) -> bool:
         log.debug('conducting service check for ssh')
         # TODO: make it not random
         log.warning('Service check for SSH not properly implemented')
@@ -104,7 +105,7 @@ class HTTPService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, identifier: int) -> bool:
+    def conduct_service_check(self, addr: IPAddr) -> bool:
         log.debug('conducting service check for http')
         # TODO: make it not random
         log.warning('Service check for HTTP not properly implemented')
@@ -133,7 +134,7 @@ class HTTPSService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, identifier: int) -> bool:
+    def conduct_service_check(self, addr: IPAddr) -> bool:
         log.debug('conducting service check for https')
         # TODO: make it not random
         log.warning('Service check for HTTPS not properly implemented')

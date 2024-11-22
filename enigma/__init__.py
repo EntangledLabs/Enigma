@@ -36,6 +36,7 @@ file_handler.setFormatter(log_format)
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_format)
+console_handler.setLevel(logging.INFO)
 
 if 'file' in log_output:
     log.addHandler(file_handler)

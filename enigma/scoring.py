@@ -1,29 +1,38 @@
-import time, uuid
+import time, sched, threading, queue
 from os import listdir
 from os.path import isfile, join, splitext
 import random, csv
 import logging
 
-from enigma.models import Team, TeamCreds
-from enigma.auth import PWHash
-from enigma.util import Box, ScoreBreakdown, TeamManager, Inject
-from enigma.database import db_session
-from enigma.settings import boxes_path, creds_path, possible_services, round_info, injects_path
+from enigma.models import Team, ScoreReport, TeamCreds, SLAReport, ScoreHistory, InjectReport
+from enigma.util import Box, TeamManager, Inject, IPAddr
+from enigma.database import db_session, del_db
+from enigma.settings import boxes_path, creds_path, round_info, injects_path, comp_info, env_info
 
 log = logging.getLogger(__name__)
 
+# The main scoring engine for Enigma. Intended for use in production
+# ScoringEngine is intended to continuously score services
 class ScoringEngine():
 
     def __init__(self):
         
+        self.delete_tables()
+
         # Initialize environment information
+        self.name = comp_info.get('name')
+
         self.boxes = self.find_boxes()
+        self.services = Box.full_service_list(self.boxes)
         self.credlists = self.find_credlists()
+        self.teams = self.find_teams()
         self.managers = self.create_managers(
-                self.find_teams(), 
-                Box.full_service_list(self.boxes), 
-                self.find_credlists()
+                self.teams, 
+                self.services, 
+                self.credlists
             )
+        self.injects = ScoringEngine.find_injects()
+        self.environment = IPAddr(env_info['first_octet'], env_info['second_octet'])
 
         # Verify settings
         if round_info['check_jitter'] >= round_info['check_delay']:
@@ -36,6 +45,10 @@ class ScoringEngine():
         # Starting from round 1
         self.round = 1
 
+        self.check_scheduler = sched.scheduler(time.time, time.sleep)
+        self.queue = queue.Queue()
+
+    # Scoring loop methods
     def start_scoring(self):
         pass
 
@@ -44,6 +57,26 @@ class ScoringEngine():
 
     def pause_scoring(self):
         pass
+
+    def scoring_worker(self):
+        while True:
+            item = self.queue.get()
+            
+    
+    # Helper methods
+
+    # Deletes all records except for team records
+    def delete_tables(self):
+        log.debug('deleting all data except for team data')
+        db_session.query(ScoreReport).delete()
+        db_session.query(TeamCreds).delete()
+        db_session.query(SLAReport).delete()
+        db_session.query(ScoreHistory).delete()
+        db_session.query(InjectReport).delete()
+        db_session.commit()
+        db_session.close()
+
+    # Find/create methods for relevant competition data
 
     @classmethod
     def create_managers(cls, teams: list, services:list, credlists: dict) -> dict:
@@ -96,7 +129,7 @@ class ScoringEngine():
     @classmethod
     def find_teams(cls) -> list:
         log.debug('finding teams')
-        teams = db_session.query(Team).filter(Team.id != 0).all()
+        teams = db_session.query(Team).all()
         db_session.close()
         if teams is None:
             log.critical('No teams were specified, terminating...')
@@ -106,17 +139,6 @@ class ScoringEngine():
     
     @classmethod
     def create_teams(cls, starting_identifier: int, name_format: str, teams: list[int]):
-        db_session.add(
-            Team(
-                id = 0,
-                username = 'Admin',
-                #pw_hash = PWHash.new('enigma'),
-                identifier = 0,
-                score = 0
-            )
-        )
-        db_session.commit()
-
         for team in teams:
             db_session.add(
                 Team(
@@ -141,3 +163,25 @@ class ScoringEngine():
             injects.append(Inject.new(path))
         log.debug('injects found: {}'.format(injects))
         return injects
+
+
+
+
+
+
+
+# A testing scoring engine. Is not meant for production
+# TestScoringEngine is not intended to score services indefinitely, rather to test functionality of other modules within Enigma
+class TestScoringEngine(ScoringEngine):
+    
+    def __init__(self):
+        test_users = 10
+        team_format = 'Team0{}'
+
+        team_list = list()
+        for i in range(1, test_users + 1):
+            team_list.append(i)
+
+        super().create_teams(1, team_format, team_list)
+
+        super().__init__()

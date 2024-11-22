@@ -582,15 +582,23 @@ class Inject():
         log.debug('created an Inject with name {}'.format(data['name']))
         return inject
 
-# Class InjectManager
-# Keeps track of all injects
-class InjectManager():
+# Class IPAddr
+# Mostly for formatting purposes
+class IPAddr():
 
-    def __init__(self):
-        pass
+    def __init__(self, first: int=0, second: int=0, third: int=0, fourth: int=0):
+        self.first = first
+        self.second = second
+        self.third = third
+        self.fourth = fourth
 
-    def add_inject(self):
-        pass
-
-    def remove_inject(self):
-        pass
+    def __repr__(self):
+        return f'{self.first}.{self.second}.{self.third}.{self.fourth}'
+    
+    def build_full_box_addr(self, identifier: int, box: int):
+        return self(
+            self.first,
+            self.second,
+            third = identifier,
+            fourth = box
+        )
