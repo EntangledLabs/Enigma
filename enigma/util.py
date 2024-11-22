@@ -7,7 +7,7 @@ import pandas as pd
 
 from enigma.checks import *
 from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory, InjectReport
-from enigma.settings import boxes_path, points_info, possible_services
+from enigma.settings import boxes_path, points_info, possible_services, injects_path
 
 log = logging.getLogger(__name__)
 
@@ -303,8 +303,9 @@ class TeamManager():
     # This should be called at the end of every round
     def tabulate_scores(self, round: int):
         log.debug('tabulating scores for round {} for team {}'.format(round, self.id))
-        score_reports = db_session.query(ScoreReport).filter(ScoreReport.round == round, ScoreReport.team_id == self.id).all()
+        score_reports = db_session.query(ScoreReport).filter(ScoreReport.team_id == self.id).all()
 
+        # Dump all of the score report data here because the db_session keeps timing out
         pertinent_info = list()
         for report in score_reports:
             pertinent_info.append({
@@ -314,15 +315,27 @@ class TeamManager():
 
         db_session.close()
 
+        # Delete all ScoreReport records because it gets too heavy to store everything indefinitely
+        db_session.query(ScoreReport).delete()
+        db_session.commit()
+        db_session.close()
+
+        # Service check tabulation
         log.debug('score reports found')
         for report in pertinent_info:
             if report.get('result'):
+                # Service check is successful, awards points
+
                 log.info('awarding service points to team {} for service {}'.format(self.id, report.get('service')))
                 self.scores.award_service_points(report.get('service'))
                 if report.get('service') in self.sla_tracker:
                     self.sla_tracker.pop(report.get('service'))
             else:
+                # Service check is unsuccessful, checking if there is an SLA violation
+
                 if report.get('service') not in self.sla_tracker.keys():
+                    # No previous SLA violation tracking, adding service to tracker
+
                     log.info('starting to track team {} SLA violation for service {}, 1 of {}'.format(
                         self.id, 
                         report.get('service'),
@@ -332,7 +345,11 @@ class TeamManager():
                         report.get('service'): 1
                     })
                 else:
+                    # Previous SLA violating tracking is found, determining if SLA threshold is met
+
                     if self.sla_tracker.get(report.get('service')) == points_info.get('sla_requirement') - 1:
+                        # Full SLA violation, creating SLA report and deducting points
+
                         log.info('full sla violation for team {} service {}, deducting points'.format(self.id, report.get('service')))
                         self.scores.award_sla_penalty(report.get('service'))
                         self.sla_tracker.pop(report.get('service'))
@@ -345,6 +362,8 @@ class TeamManager():
                         )
                         db_session.commit()
                     else:
+                        # Threshold not met, extending SLA tracker
+
                         log.info('sla violation tracking extended for team {} service {}, {} of {}'.format(
                             self.id, 
                             report.get('service'),
@@ -356,6 +375,12 @@ class TeamManager():
                         })
         db_session.close()
 
+        # Inject tabulation
+        inject_reports = db_session.query(InjectReport).filter(InjectReport.team_id == self.id).all()
+        for inject in inject_reports:
+            self.scores.award_inject_points(inject.inject_num, inject.score)
+
+        # Publish score report
         db_session.add(
             ScoreHistory(
                 team_id = self.id,
@@ -511,24 +536,33 @@ class Inject():
     # Calculates the score of an inject and creates a record
     # scores should be in the format {scoring category: score}
     # where 'score' is a str, see the example inject
+    # If the record already exists, update the score
     def score_inject(self, team_id: int, scores: dict):
         score = 0
         for cat in self.breakdown.keys():
             score = score + self.breakdown.get(cat).get(scores.get(cat))
-        db_session.add(
-            InjectReport(
-                team_id = team_id,
-                inject_num = self.id,
-                score = score
+
+        inject_report = db_session.query(InjectReport).filter(
+            InjectReport.team_id == team_id,
+            InjectReport.inject_num == self.id
+            ).first()
+        if inject_report is None:
+            db_session.add(
+                InjectReport(
+                    team_id = team_id,
+                    inject_num = self.id,
+                    score = score
+                )
             )
-        )
+        else:
+            inject_report.score = score
         db_session.commit()
         db_session.close()
 
     # Creates a new Inject based on the config info
     @classmethod
     def new(cls, path: str):
-        with open(path, 'rb') as f:
+        with open(join(injects_path, path), 'rb') as f:
             data = tomllib.load(f)
         try:
             rubric = dict()

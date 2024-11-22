@@ -12,25 +12,30 @@ from os.path import join
 # This is for testing and development purposes ONLY
 # Do not run in production, if you do by accident, call del_db first
 
-num_test_users = 5
+num_test_users = 30
 team_format = 'Team0{}'
 
 del_db()
 init_db()
 
-passwords = [Team.generate_password() for i in range(0, num_test_users)]
+#passwords = [Team.generate_password() for i in range(0, num_test_users)]
 
-with open(join(test_artifacts_path, 'testpws.txt'), 'w+') as f:
-    for i in range(1,6):
-        f.writelines(['{},{}\n'.format(team_format.format(i), passwords[i-1])])
+#with open(join(test_artifacts_path, 'testpws.txt'), 'w+') as f:
+#    for i in range(1, num_test_users + 1):
+#        f.writelines(['{},{}\n'.format(team_format.format(i), passwords[i-1])])
 
-hashed_passwords = dict()
-for i in range(0, num_test_users):
-    hashed_passwords.update({
-        i+1: PWHash.new(passwords[i-1])
-    })
+#hashed_passwords = dict()
+#for i in range(1, num_test_users + 1):
+#    hashed_passwords.update({
+#        i+1: PWHash.new(passwords[i-1])
+#    })
 
-ScoringEngine.create_teams(1, team_format, hashed_passwords)
+#ScoringEngine.create_teams(1, team_format, hashed_passwords)
+team_list = list()
+for i in range(1, num_test_users + 1):
+    team_list.append(i)
+
+ScoringEngine.create_teams(1, team_format, team_list)
 
 boxes = ScoringEngine.find_boxes()
 services = Box.full_service_list(boxes)
