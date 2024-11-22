@@ -6,9 +6,9 @@ import logging
 
 from enigma.models import Team, TeamCreds
 from enigma.auth import PWHash
-from enigma.util import Box, ScoreBreakdown, TeamManager
+from enigma.util import Box, ScoreBreakdown, TeamManager, Inject
 from enigma.database import db_session
-from enigma.settings import boxes_path, creds_path, possible_services, round_info
+from enigma.settings import boxes_path, creds_path, possible_services, round_info, injects_path
 
 log = logging.getLogger(__name__)
 
@@ -105,24 +105,24 @@ class ScoringEngine():
         return teams
     
     @classmethod
-    def create_teams(cls, starting_identifier: int, name_format: str, team_creds: dict[int: PWHash]):
+    def create_teams(cls, starting_identifier: int, name_format: str, teams: list[int]):
         db_session.add(
             Team(
                 id = 0,
                 username = 'Admin',
-                pw_hash = PWHash.new('enigma'),
+                #pw_hash = PWHash.new('enigma'),
                 identifier = 0,
                 score = 0
             )
         )
         db_session.commit()
 
-        for team, pw in team_creds.items():
+        for team in teams:
             db_session.add(
                 Team(
                     id = team,
                     username = name_format.format(team),
-                    pw_hash = pw,
+                    #pw_hash = pw,
                     identifier = starting_identifier + team - 1,
                     score = 0
                 )
@@ -132,3 +132,12 @@ class ScoringEngine():
     @classmethod
     def find_injects(cls) -> list:
         log.debug('finding injects')
+        inject_files = [f for f in listdir(injects_path) if isfile(join(injects_path, f)) and splitext(f)[-1].lower() == '.toml']
+        if len(inject_files) == 0:
+            log.warning('No injects were specified')
+            return
+        injects = list()
+        for path in inject_files:
+            injects.append(Inject.new(path))
+        log.debug('injects found: {}'.format(injects))
+        return injects

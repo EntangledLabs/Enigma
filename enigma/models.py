@@ -44,7 +44,7 @@ class Team(Base):
     __tablename__ = 'teams'
     id = Column(Integer, primary_key=True)
     username = Column(Text, unique=True, nullable=False)
-    pw_hash = Column(PasswordHash, nullable=False)
+    #pw_hash = Column(PasswordHash, nullable=False)
     identifier = Column(Integer, nullable=False)
     score = Column(Integer, nullable=False)
 
@@ -53,13 +53,13 @@ class Team(Base):
             self.username, self.id, self.identifier, self.score
         )
 
-    @validates('pw_hash')
-    def _validate_password(self, key, password):
-        return getattr(type(self), key).type.validator(password)
+    #@validates('pw_hash')
+    #def _validate_password(self, key, password):
+    #    return getattr(type(self), key).type.validator(password)
 
-    def authenticate(self, pw):
-        log.debug('authenticating password for {}'.format(self.username))
-        return self.pw_hash == pw
+    #def authenticate(self, pw):
+    #    log.debug('authenticating password for {}'.format(self.username))
+    #    return self.pw_hash == pw
 
     @classmethod
     def generate_password(cls):
@@ -79,14 +79,12 @@ class TeamCreds(Base):
 class ScoreReport(Base):
     __tablename__ = 'scorereports'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key=True)
-    round = Column(Integer, primary_key=True)
     service = Column(Text, primary_key=True)
     result = Column(Boolean, nullable=False)
 
     def __repr__(self):
-        return '<ScoreReport> object representing team {} round {} for service {} with result {}'.format(
+        return '<ScoreReport> object representing team {} for service {} with result {}'.format(
             self.team_id,
-            self.round,
             self.service,
             self.result
         )
@@ -94,7 +92,7 @@ class ScoreReport(Base):
 class SLAReport(Base):
     __tablename__ = 'slareports'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
-    round = Column(Integer, ForeignKey('scorereports.round'), primary_key = True)
+    round = Column(Integer, primary_key = True)
     service = Column(Text, ForeignKey('scorereports.service'), primary_key = True)
 
 class InjectReport(Base):
@@ -103,8 +101,15 @@ class InjectReport(Base):
     inject_num = Column(Integer, primary_key = True)
     score = Column(Integer, nullable=False)
 
+    def __repr__(self):
+        return '<InjectReport> object representing inject {} for team {} with score {}'.format(
+            self.inject_num,
+            self.team_id,
+            self.score
+        )
+
 class ScoreHistory(Base):
     __tablename__ = 'scorehistory'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
-    round = Column(Integer, ForeignKey('scorereports.round'), primary_key = True)
+    round = Column(Integer, primary_key = True)
     score = Column(Integer, nullable=False)
