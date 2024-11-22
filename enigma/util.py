@@ -1,14 +1,13 @@
-import tomllib, random, csv, json, uuid
-from os import listdir
-from os.path import isfile, join, splitext
+import tomllib, random, csv, json
+from os.path import join, splitext
 import logging
 
 import plotly.express as px
 import pandas as pd
 
 from enigma.checks import *
-from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory
-from enigma.settings import boxes_path, creds_path, points_info, possible_services
+from enigma.models import Team, TeamCreds, ScoreReport, SLAReport, ScoreHistory, InjectReport
+from enigma.settings import boxes_path, points_info, possible_services
 
 log = logging.getLogger(__name__)
 
@@ -67,9 +66,8 @@ class Box():
                 )
         except:
             log.critical('{} is not configured correctly'.format(path))
-            log.debug('{} {} {}'.format(splitext(path)[0].lower(), data['identifier'], cls.compile_services(data)))
             raise SystemExit(0)
-        log.debug('created a Box')
+        log.debug('created a Box named {}'.format(splitext(path)[0].lower()))
         return box
 
 # Class ScoreBreakdown
@@ -228,10 +226,10 @@ class ScoreBreakdown():
             
             rows = list()
 
-            for cat, val in self.scores.items():
+            for cat in sorted(self.scores.keys()):
                 row = {
                     fieldnames[0]: cat,
-                    fieldnames[1]: val,
+                    fieldnames[1]: self.scores.get(cat),
                     fieldnames[2]: 0,
                     fieldnames[3]: 0
                 }
@@ -262,26 +260,13 @@ class ScoreBreakdown():
     # Creates a new ScoreBreakdown object from the config info
     @classmethod
     def new(cls, team: id, services: list):
-        log.debug('created a ScoreBreakdown')
+        log.debug('created a ScoreBreakdown for team {}'.format(team))
         return cls(
             team,
             services,
             points_info['check_points'],
             points_info['sla_penalty']
         )
-
-# Class InjectManager
-# Keeps track of all injects
-class InjectManager():
-
-    def __init__(self):
-        pass
-
-    def add_inject(self):
-        pass
-
-    def remove_inject(self):
-        pass
 
 # Class TeamManager
 # Keeps a team's ScoreBreakdown and cred lists in one place
@@ -313,7 +298,7 @@ class TeamManager():
         )
 
     # Methods related to scores
-    
+
     # Gathers all score reports for a round
     # This should be called at the end of every round
     def tabulate_scores(self, round: int):
@@ -384,6 +369,7 @@ class TeamManager():
         log.debug('completed score tabulation for team {} for round {}'.format(self.id, round))
 
     # Creates a graph based on score history
+    # TODO: fix the rows and columns being completely swapped
     @classmethod
     def graph_scores(cls, managers: dict):
         log.debug('graphing scores')
@@ -404,13 +390,18 @@ class TeamManager():
             round_data = list()
             for team in team_nums:
                 round_data.append(
-                    db_session.query(ScoreHistory.score).filter(ScoreHistory.team_id == team, ScoreHistory.round == round)
+                    db_session.query(ScoreHistory.score).filter(ScoreHistory.team_id == team, ScoreHistory.round == round).first()[0]
                 )
                 db_session.close()
             data.update({
                 round: round_data
             })
+
         print(data)
+        df = pd.DataFrame(data, row_names)
+        plot = px.line(df)
+        print(df)
+        plot.show()
 
     # Methods related to creds
 
@@ -472,6 +463,7 @@ class TeamManager():
             team.creds = json.dumps(mod_creds)
             db_session.commit()
 
+    # Creates a new TeamManager from the config info
     @classmethod
     def new(cls, id: int, services: list, cred_data: dict):
         log.debug('created new TeamManager for team {}'.format(id))
@@ -483,3 +475,88 @@ class TeamManager():
             ),
             cred_data.copy()
         )
+    
+# Class Inject
+# Represents an inject
+class Inject():
+    
+    def __init__(self, id: int, name: str, desc: str, worth: int, path: str, rubric: dict):
+        self.id = id
+        self.name = name
+        self.desc = desc
+        self.worth = worth
+        self.path = path
+        self.rubric = rubric
+        self.breakdown = self.calculate_score_breakdown()
+
+    def __repr__(self):
+        return '<{}> with id {} and name {}'.format(type(self).__name__, self.id, self.name)
+
+    # Calculates the corresponding scores for each scoring category and scoring option
+    def calculate_score_breakdown(self):
+        breakdown = dict()
+        for key in self.rubric.keys():
+            weight = self.worth * self.rubric[key]['weight']
+            base_cat_score = weight / (len(self.rubric[key]['categories']) - 1)
+            possible_cat_scores = dict()
+            for i in range(0, len(self.rubric[key]['categories'].keys())):\
+                possible_cat_scores.update({
+                    list(self.rubric[key]['categories'].keys())[i]: base_cat_score * i
+                })
+            breakdown.update({
+                key: possible_cat_scores
+            })
+        return breakdown
+    
+    # Calculates the score of an inject and creates a record
+    # scores should be in the format {scoring category: score}
+    # where 'score' is a str, see the example inject
+    def score_inject(self, team_id: int, scores: dict):
+        score = 0
+        for cat in self.breakdown.keys():
+            score = score + self.breakdown.get(cat).get(scores.get(cat))
+        db_session.add(
+            InjectReport(
+                team_id = team_id,
+                inject_num = self.id,
+                score = score
+            )
+        )
+        db_session.commit()
+        db_session.close()
+
+    # Creates a new Inject based on the config info
+    @classmethod
+    def new(cls, path: str):
+        with open(path, 'rb') as f:
+            data = tomllib.load(f)
+        try:
+            rubric = dict()
+            for cat in data['rubric']:
+                rubric.update(cat)
+            inject = cls(
+                int(splitext(path)[0].lower()[-1]),
+                data['name'],
+                data['description'],
+                data['worth'],
+                data['path'],
+                rubric
+            )
+        except:
+            log.critical('{} is not configured correctly'.format(path))
+            raise SystemExit(0)
+        log.debug('created an Inject with name {}'.format(data['name']))
+        return inject
+
+# Class InjectManager
+# Keeps track of all injects
+class InjectManager():
+
+    def __init__(self):
+        pass
+
+    def add_inject(self):
+        pass
+
+    def remove_inject(self):
+        pass

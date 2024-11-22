@@ -18,5 +18,5 @@ build/
 *.db
 
 logs/*.log
-testpws.txt
-testscores.csv
+test_artifacts/*.csv
+test_artifacts/*.txt

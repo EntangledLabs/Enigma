@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, TypeDecorator, Uuid, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Text, TypeDecorator, ForeignKey, Boolean
 from sqlalchemy.orm import validates
 
 from enigma.database import Base
@@ -99,9 +99,8 @@ class SLAReport(Base):
 
 class InjectReport(Base):
     __tablename__ = 'injectreports'
-    id = Column(Uuid, primary_key=True)
-    team_id = Column(Integer, ForeignKey('teams.id'))
-    inject_num = Column(Integer, nullable=False)
+    team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
+    inject_num = Column(Integer, primary_key = True)
     score = Column(Integer, nullable=False)
 
 class ScoreHistory(Base):

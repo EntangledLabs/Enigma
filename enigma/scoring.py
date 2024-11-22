@@ -5,6 +5,7 @@ import random, csv
 import logging
 
 from enigma.models import Team, TeamCreds
+from enigma.auth import PWHash
 from enigma.util import Box, ScoreBreakdown, TeamManager
 from enigma.database import db_session
 from enigma.settings import boxes_path, creds_path, possible_services, round_info
@@ -103,6 +104,31 @@ class ScoringEngine():
         log.debug('teams found: {}'.format(teams))
         return teams
     
+    @classmethod
+    def create_teams(cls, starting_identifier: int, name_format: str, team_creds: dict[int: PWHash]):
+        db_session.add(
+            Team(
+                id = 0,
+                username = 'Admin',
+                pw_hash = PWHash.new('enigma'),
+                identifier = 0,
+                score = 0
+            )
+        )
+        db_session.commit()
+
+        for team, pw in team_creds.items():
+            db_session.add(
+                Team(
+                    id = team,
+                    username = name_format.format(team),
+                    pw_hash = pw,
+                    identifier = starting_identifier + team - 1,
+                    score = 0
+                )
+            )
+            db_session.commit()
+
     @classmethod
     def find_injects(cls) -> list:
         log.debug('finding injects')
