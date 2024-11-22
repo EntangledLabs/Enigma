@@ -3,9 +3,11 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 
+from enigma.settings import db_url
+
 log = logging.getLogger(__name__)
 
-engine = create_engine('sqlite:///enigma.db')
+engine = create_engine(db_url)
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))
