@@ -18,5 +18,9 @@ build/
 *.db
 
 logs/*.log
+
+scores/*.csv
+
 test_artifacts/*.csv
 test_artifacts/*.txt
+test_artifacts/*.json

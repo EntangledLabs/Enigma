@@ -2,7 +2,6 @@ import subprocess, random, logging
 from abc import ABC, abstractmethod
 
 from enigma.database import db_session
-from enigma.util import IPAddr
 
 log = logging.getLogger(__name__)
 
@@ -29,13 +28,13 @@ class Service(ABC):
 
     # This method is perhaps most important. It conducts a service check and returns a boolean to represent the result
     # Note that conduct_service_check() will be called in a worker process, not the main thread
-    # Implementations of conduct_service_check() must have the identifier and box parameter
+    # Implementations of conduct_service_check() must check kwargs for check info
     # This is used to properly target a team's box
     # e.x. If the pod networks are on 172.16.<identifier>.0, then conduct_service_check() will target 172.16.<identifier>.<box>
     # e.x. If Team01 has identifier '32', and an SSHService is configured on Box 'examplebox' with host octet 5,
     #      then the worker process will target 172.16.32.5
     @abstractmethod
-    def conduct_service_check(self, identifier: int, box: int):
+    def conduct_service_check(self, **kwargs):
         pass
     
     # Service.new(data) is called to create a new Service object with all of the proper parameters assigned
@@ -74,12 +73,16 @@ class SSHService(Service):
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
 
-    def conduct_service_check(self, addr: IPAddr, creds: dict) -> bool:
+    def conduct_service_check(self, data: dict) -> bool:
         log.debug('conducting service check for ssh')
         # TODO: make it not random
         log.warning('Service check for SSH not properly implemented')
         
-        return random.choice([True, False])
+        result = random.choice([True, False])
+        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
+        return (
+            data['team'], result
+        )
 
     @classmethod
     def new(cls, data: dict):
@@ -105,13 +108,16 @@ class HTTPService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, addr: IPAddr) -> bool:
+    def conduct_service_check(self, data: dict) -> bool:
         log.debug('conducting service check for http')
         # TODO: make it not random
         log.warning('Service check for HTTP not properly implemented')
         
-        return random.choice([True, False])
-
+        result = random.choice([True, False])
+        log.debug('service check completed with result {}'.format(result))
+        return (
+            data['team'], result
+        )
     @classmethod
     def new(cls, data: dict):
         log.debug('created a HTTPService')
@@ -134,13 +140,16 @@ class HTTPSService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, addr: IPAddr) -> bool:
+    def conduct_service_check(self, data: dict) -> bool:
         log.debug('conducting service check for https')
         # TODO: make it not random
         log.warning('Service check for HTTPS not properly implemented')
         
-        return random.choice([True, False])
-
+        result = random.choice([True, False])
+        log.debug('service check completed with result {}'.format(result))
+        return (
+            data['team'], result
+        )
     @classmethod
     def new(cls, data: dict):
         log.debug('created a HTTPSService')
