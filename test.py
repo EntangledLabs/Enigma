@@ -1,81 +1,45 @@
 import tomllib, csv, json, random
 import pkgutil, inspect
-import enigma
 import os, hashlib
-from enigma.auth import PWHash
-from enigma.models import Team, ScoreReport, TeamCreds, SLAReport, ScoreHistory, InjectReport
+from enigma.models import Team, TeamCreds, SLAReport, ScoreHistory, InjectReport
 from enigma.database import db_session, init_db, del_db
 from enigma.checks import Service, SSHService, HTTPService, HTTPSService
-from enigma.scoring import ScoringEngine
+from enigma.scoring import ScoringEngine, TestScoringEngine
 from enigma.util import ScoreBreakdown, TeamManager, Box, Inject
 from enigma.settings import logs_path, injects_path, test_artifacts_path
 import logging
 
 from datetime import datetime
 
-import plotly.express as px
-import pandas as pd
+import threading, time, queue
+import concurrent.futures
 
 from os import listdir
 from os.path import isfile, join, splitext
 
-print('deleting tables')
-db_session.query(ScoreReport).delete()
-db_session.query(TeamCreds).delete()
-db_session.query(SLAReport).delete()
-db_session.query(ScoreHistory).delete()
-db_session.query(InjectReport).delete()
-db_session.commit()
-db_session.close()
+"""def test_scoring(team: int):
+    time.sleep(random.randint(1, 5))
+    choice = {
+        team: random.choice([True, False])
+    }
+    print(choice)
+    return choice"""
 
-print('finding all comp info')
-boxes = ScoringEngine.find_boxes()
-services = Box.full_service_list(boxes)
-creds = ScoringEngine.find_credlists()
-teams = ScoringEngine.find_teams()
-managers = ScoringEngine.create_managers(teams, services, creds)
-injects = ScoringEngine.find_injects()
+"""if __name__ == '__main__':
+    workers = list()
+    teams = [i for i in range(5)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = executor.map(test_scoring, teams)
+    scores = list(results)
+    print(scores)"""
 
-rounds = 20
 
-for i in range(1, rounds - 1):
-    print('doing round {}'.format(i))
-    for team, manager in managers.items():
-        for service in services:
-            db_session.add(
-                ScoreReport(
-                    team_id = team,
-                    service = service,
-                    result = random.choice([True, False])
-                )
-            )
-            db_session.commit()
-            db_session.close()
-        manager.tabulate_scores(i)
-            
-print('creating injects')
-for team, manager in managers.items():
-    for inject in injects:
-        scores = {
-            'professionalism': random.choice(['troll', 'dreadful', 'poor', 'acceptable', 'exceeds', 'outstanding']),
-            'accuracy': random.choice(['fail', 'pass'])
-        }
-        inject.score_inject(team, scores)
+"""for i in range(0, 10):
+    se.score_services(i+1)
 
-print('doing round {}'.format(rounds))
-for team, manager in managers.items():
-    for service in services:
-        db_session.add(
-            ScoreReport(
-                team_id = team,
-                service = service,
-                result = random.choice([True, False])
-            )
-        )
-        db_session.commit()
-        db_session.close()
-    manager.tabulate_scores(rounds)
+se.export_all_as_csv()"""
 
-print('exporting')
-for team, manager in managers.items():
-    manager.scores.export_csv('testscores{}'.format(team), test_artifacts_path)
+if __name__ == '__main__':
+    se = TestScoringEngine(5, 'Team{}')
+    se.score_services(1)
+    se.export_all_as_csv()

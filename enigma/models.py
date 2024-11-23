@@ -6,7 +6,7 @@ from enigma.auth import PWHash
 
 import secrets, string, logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 
 ## Custom SQLAlchemy Types
 
@@ -76,24 +76,11 @@ class TeamCreds(Base):
     def __repr__(self):
         return f'<TeamCreds> object with name {self.name} belonging to team {self.team_id}'
 
-class ScoreReport(Base):
-    __tablename__ = 'scorereports'
-    team_id = Column(Integer, ForeignKey('teams.id'), primary_key=True)
-    service = Column(Text, primary_key=True)
-    result = Column(Boolean, nullable=False)
-
-    def __repr__(self):
-        return '<ScoreReport> object representing team {} for service {} with result {}'.format(
-            self.team_id,
-            self.service,
-            self.result
-        )
-
 class SLAReport(Base):
     __tablename__ = 'slareports'
     team_id = Column(Integer, ForeignKey('teams.id'), primary_key = True)
     round = Column(Integer, primary_key = True)
-    service = Column(Text, ForeignKey('scorereports.service'), primary_key = True)
+    service = Column(Text, primary_key = True)
 
 class InjectReport(Base):
     __tablename__ = 'injectreports'
