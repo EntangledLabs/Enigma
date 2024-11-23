@@ -1,7 +1,7 @@
 import hashlib, os
 import logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 
 # PWHash class
 # A class to hold password hashes for verification.

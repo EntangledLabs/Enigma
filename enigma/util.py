@@ -9,7 +9,7 @@ from enigma.checks import *
 from enigma.models import Team, TeamCreds, SLAReport, ScoreHistory, InjectReport
 from enigma.settings import boxes_path, points_info, injects_path
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 
 # Class Box
 # Represents a box and its services
@@ -70,24 +70,6 @@ class Box():
         log.debug('created a Box named {}'.format(splitext(path)[0].lower()))
         return box
 
-    
-# Class ScoreReport
-# Essentially a struct for a score report
-class ScoreReport():
-
-    def __init__(self, team_id, service, result):
-        self.team_id = team_id
-        self.service = service
-        self.result = result
-
-    def __repr__(self):
-        return '<{}> for team {} for service {} with result {}'.format(
-            type(self).__name__,
-            self.team_id,
-            self.service,
-            self.result
-        )
-
 # Class ScoreBreakdown
 # A class to store every single scoring option
 # A central place to store and reveal scores
@@ -125,8 +107,6 @@ class ScoreBreakdown():
 
         self.total_score = self.raw_score - self.penalty_score
         
-        team = db_session.get(Team, self.team)
-        team.score = self.total_score
         db_session.commit()
         db_session.close()
         log.debug('new total for team {} is {}'.format(self.team, self.total_score))
@@ -316,47 +296,48 @@ class TeamManager():
 
     # Gathers all score reports for a round
     # This should be called at the end of every round
-    def tabulate_scores(self, round: int, reports: list[ScoreReport]):
+    # Gets passed a dict[service: result]
+    def tabulate_scores(self, round: int, reports: dict):
         log.debug('tabulating scores for round {} for team {}'.format(round, self.id))
 
         # Service check tabulation
         log.debug('score reports found')
-        for report in reports:
-            if report.result:
+        for service, result in reports.items():
+            if result:
                 # Service check is successful, awards points
 
-                log.info('awarding service points to team {} for service {}'.format(self.id, report.service))
-                self.scores.award_service_points(report.service)
-                if report.service in self.sla_tracker:
-                    self.sla_tracker.pop(report.service)
+                log.info('awarding service points to team {} for service {}'.format(self.id, service))
+                self.scores.award_service_points(service)
+                if service in self.sla_tracker:
+                    self.sla_tracker.pop(service)
             else:
                 # Service check is unsuccessful, checking if there is an SLA violation
 
-                if report.service not in self.sla_tracker.keys():
+                if service not in self.sla_tracker.keys():
                     # No previous SLA violation tracking, adding service to tracker
 
                     log.info('starting to track team {} SLA violation for service {}, 1 of {}'.format(
                         self.id, 
-                        report.service,
+                        service,
                         points_info.get('sla_requirement')
                         ))
                     self.sla_tracker.update({
-                        report.service: 1
+                        service: 1
                     })
                 else:
                     # Previous SLA violating tracking is found, determining if SLA threshold is met
 
-                    if self.sla_tracker.get(report.service) == points_info.get('sla_requirement') - 1:
+                    if self.sla_tracker.get(service) == points_info.get('sla_requirement') - 1:
                         # Full SLA violation, creating SLA report and deducting points
 
-                        log.info('full sla violation for team {} service {}, deducting points'.format(self.id, report.service))
-                        self.scores.award_sla_penalty(report.service)
-                        self.sla_tracker.pop(report.service)
+                        log.info('full sla violation for team {} service {}, deducting points'.format(self.id, service))
+                        self.scores.award_sla_penalty(service)
+                        self.sla_tracker.pop(service)
                         db_session.add(
                             SLAReport(
                                 team_id = self.id,
                                 round = round,
-                                service = report.service
+                                service = service
                             )
                         )
                         db_session.commit()
@@ -365,26 +346,28 @@ class TeamManager():
 
                         log.info('sla violation tracking extended for team {} service {}, {} of {}'.format(
                             self.id, 
-                            report.service,
-                            self.sla_tracker.get(report.service),
+                            service,
+                            self.sla_tracker.get(service),
                             points_info.get('sla_requirement')
                             ))
                         self.sla_tracker.update({
-                            report.service: self.sla_tracker.pop(report.service) + 1
+                            service: self.sla_tracker.pop(service) + 1
                         })
         db_session.close()
 
         # Inject tabulation
+        log.debug('tabulating inject scores')
         inject_reports = db_session.query(InjectReport).filter(InjectReport.team_id == self.id).all()
         for inject in inject_reports:
             if f'inject{inject.inject_num}' in self.scores.scores and self.scores.scores[f'inject{inject.inject_num}'] == inject.score:
-                log.error('cannot add inject {} to score, already exists'.format(inject.inject_num))
+                log.warning('cannot add inject {} to score, already exists'.format(inject.inject_num))
                 continue
-                
             else:
                 self.scores.award_inject_points(inject.inject_num, inject.score)
 
         # Publish score report
+
+        log.debug('creating ScoreHistory record for team {} for round {} with score {}'.format(self.id, round, self.scores.total_score))
         db_session.add(
             ScoreHistory(
                 team_id = self.id,
@@ -392,6 +375,13 @@ class TeamManager():
                 score = self.scores.total_score
             )
         )
+        db_session.commit()
+        db_session.close()
+
+        # Update Team record with new score
+        log.debug('updated Team record for team {} with new score'.format(self.id))
+        team = db_session.get(Team, self.id)
+        team.score = self.scores.total_score
         db_session.commit()
         db_session.close()
 

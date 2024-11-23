@@ -1,22 +1,26 @@
-import logging
+import logging, re
 
 from os.path import isfile, join, splitext
-
+from multiprocessing import log_to_stderr, current_process
 from os import remove, listdir
 
 from enigma.settings import log_file, log_level, log_output, logs_path, max_logs
 
 
-#### Creates a universal logger for Enigma
+#### Creates a universal logger for Enigma ####
+
+# Detect if this is the main process or not
+is_main = not bool(re.match(r'Process-\d+', current_process().name))
 
 # Writing a header to the log file because it looks better
-with open(log_file, 'w+') as f:
-    f.writelines([
-        '++++==== Enigma Scoring Engine Log ====++++\n'
-    ])
+if is_main:
+    with open(log_file, 'w+') as f:
+        f.writelines([
+            '++++==== Enigma Scoring Engine Log ====++++\n'
+        ])
 
 # Creating the logger
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 log.setLevel(log_level)
 
 # Log format
@@ -49,4 +53,7 @@ if max_logs != 0:
     while len(log_files) > max_logs:
         remove(join(logs_path, log_files.pop(0)))
 
-log.info('Enigma module initialized')
+log_to_stderr(logging.WARNING)
+
+if is_main:
+    log.info('Enigma module initialized')
