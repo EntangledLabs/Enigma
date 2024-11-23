@@ -48,3 +48,5 @@ if max_logs != 0:
     log_files = sorted(log_files)
     while len(log_files) > max_logs:
         remove(join(logs_path, log_files.pop(0)))
+
+log.info('Enigma module initialized')

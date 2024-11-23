@@ -15,14 +15,14 @@ db_session = scoped_session(sessionmaker(autocommit=False,
 Base = declarative_base()
 Base.query = db_session.query_property()
 
-log.info('db engine has been initialized and session factory is ready')
+log.info('DB engine has been initialized and session factory is ready')
 
 def init_db():
     import enigma.models
     Base.metadata.create_all(bind=engine)
-    log.info('all tables have been created')
+    log.debug('all tables have been created')
 
 def del_db():
     import enigma.models
     Base.metadata.drop_all(bind=engine)
-    log.info('all tables have been dropped')
+    log.debug('all tables have been dropped')
