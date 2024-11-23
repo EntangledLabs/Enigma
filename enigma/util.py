@@ -70,24 +70,6 @@ class Box():
         log.debug('created a Box named {}'.format(splitext(path)[0].lower()))
         return box
 
-    
-# Class ScoreReport
-# Essentially a struct for a score report
-class ScoreReport():
-
-    def __init__(self, team_id, service, result):
-        self.team_id = team_id
-        self.service = service
-        self.result = result
-
-    def __repr__(self):
-        return '<{}> for team {} for service {} with result {}'.format(
-            type(self).__name__,
-            self.team_id,
-            self.service,
-            self.result
-        )
-
 # Class ScoreBreakdown
 # A class to store every single scoring option
 # A central place to store and reveal scores
