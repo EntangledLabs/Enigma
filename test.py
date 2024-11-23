@@ -33,9 +33,13 @@ from os.path import isfile, join, splitext
     scores = list(results)
     print(scores)"""
 
-se = TestScoringEngine(30, 'Team{}')
 
-for i in range(0, 100):
+"""for i in range(0, 10):
     se.score_services(i+1)
 
-se.export_all_as_csv()
+se.export_all_as_csv()"""
+
+if __name__ == '__main__':
+    se = TestScoringEngine(5, 'Team{}')
+    se.score_services(1)
+    se.export_all_as_csv()

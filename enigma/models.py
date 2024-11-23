@@ -6,7 +6,7 @@ from enigma.auth import PWHash
 
 import secrets, string, logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 
 ## Custom SQLAlchemy Types
 

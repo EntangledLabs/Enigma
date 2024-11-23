@@ -1,9 +1,10 @@
-import subprocess, random, logging
+import random, logging
 from abc import ABC, abstractmethod
+from time import sleep
 
 from enigma.database import db_session
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('enigma')
 
 # Abstract class Service
 # All services are derived from Service
@@ -73,16 +74,19 @@ class SSHService(Service):
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
 
-    def conduct_service_check(self, data: dict) -> bool:
+    def conduct_service_check(self, data: dict):
         log.debug('conducting service check for ssh')
         # TODO: make it not random
         log.warning('Service check for SSH not properly implemented')
-        
+        sleep(random.randint(1,10))
         result = random.choice([True, False])
         log.debug('service check completed with result {} for team {}'.format(result, data['team']))
-        return (
-            data['team'], result
-        )
+        if result:
+            return (
+                data['team'],
+                data['service']
+            )
+        return
 
     @classmethod
     def new(cls, data: dict):
@@ -108,16 +112,19 @@ class HTTPService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict) -> bool:
+    def conduct_service_check(self, data: dict):
         log.debug('conducting service check for http')
         # TODO: make it not random
         log.warning('Service check for HTTP not properly implemented')
-        
+        sleep(random.randint(1,10))
         result = random.choice([True, False])
-        log.debug('service check completed with result {}'.format(result))
-        return (
-            data['team'], result
-        )
+        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
+        if result:
+            return (
+                data['team'],
+                data['service']
+            )
+        return
     @classmethod
     def new(cls, data: dict):
         log.debug('created a HTTPService')
@@ -140,16 +147,19 @@ class HTTPSService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict) -> bool:
+    def conduct_service_check(self, data: dict):
         log.debug('conducting service check for https')
         # TODO: make it not random
         log.warning('Service check for HTTPS not properly implemented')
-        
+        sleep(random.randint(1,10))
         result = random.choice([True, False])
-        log.debug('service check completed with result {}'.format(result))
-        return (
-            data['team'], result
-        )
+        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
+        if result:
+            return (
+                data['team'],
+                data['service']
+            )
+        return
     @classmethod
     def new(cls, data: dict):
         log.debug('created a HTTPSService')
