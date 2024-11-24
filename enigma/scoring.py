@@ -12,6 +12,7 @@ from enigma.util import Box, TeamManager, Inject
 from enigma.checks import Service
 from enigma.database import db_session, del_db, init_db
 from enigma.settings import boxes_path, creds_path, round_info, injects_path, comp_info, env_info, test_artifacts_path, scores_path
+from enigma.scoreutil import run_score_checks
 
 log = logging.getLogger('enigma')
 
@@ -76,8 +77,18 @@ class ScoringEngine():
         log.info('++++==== Environment Info Gathered ====++++')
         # Starting from round 1
         self.round = 1
+        self.pause = False
+        # Create process for scoring
 
-    
+
+    # Scoring engine main loop
+    def run(self, total_rounds: int=0):
+        while self.round < total_rounds or total_rounds == 0:
+            if not self.pause:
+                self.score_services(self.round)
+                self.round = self.round + 1
+                time.sleep(round_info['check_time'] + random.randint(-round_info['check_jitter'], round_info['check_jitter']))
+
     # Score check methods
 
     # Runs a full service score check for all teams, boxes, services
@@ -111,7 +122,7 @@ class ScoringEngine():
                 for team_id, team in self.managers.items():
                     log.debug('creating worker for {} for service {}'.format(team.id, service_name))
                     check_data.append(
-                        self.setup_score_data(
+                        self.setup_check_data(
                             service,
                             team,
                             box.identifier,
@@ -130,7 +141,8 @@ class ScoringEngine():
         # reports = dict[team id: dict[service: result]]
         log.debug('creating presumed-guilty score reports')
         reports = dict()
-        for service in self.services:
+        all_services = Box.full_service_list(self.boxes)
+        for service in all_services:
             for team_id in self.managers:
                 if team_id not in reports:
                     reports.update({
@@ -145,7 +157,7 @@ class ScoringEngine():
 
         log.debug('starting score check process')
         results_queue = Queue()
-        checks_process = Process(target=self.run_score_checks, args=(score_checks, results_queue))
+        checks_process = Process(target=run_score_checks, args=(score_checks, results_queue, self.managers, all_services))
         checks_process.start()
         checks_process.join(round_info['check_timeout'])
 
@@ -162,34 +174,10 @@ class ScoringEngine():
         for team_id, team in self.managers.items():
             team.tabulate_scores(round, reports[team_id])
 
-        log.info('Score checks for round {} complete.'.format(round))
-
-    # Runs all score checks. Each score check is handled in a thread
-    # Pushes all positive score checks to the queue
-    def run_score_checks(self, check_data: dict, results_queue: Queue):
-        log = get_logger()
-        log.debug('score check worker spawned, starting score checks')
-        threads = len(self.managers.keys()) * len(self.services)
-
-        executor = ThreadPoolExecutor(max_workers = threads)
-        results = list()
-        for service, info in check_data.items():
-            for info_morsel in info['check_data']:
-                results.append(
-                    executor.submit(
-                        info['func'],
-                        info_morsel
-                    )
-                )
-        log.debug('all score check workers spawned')
-        for result in as_completed(results):
-            if result.result() is not None:
-                results_queue.put(result.result())
-        log.debug('all score checks finished before timeout')
-        executor.shutdown()
+        log.info('Score checks for round {} complete.'.format(round))# Score check methods
 
     # Creates a tuple of data important to scoring
-    def setup_score_data(self, service: Service, team: TeamManager, identifier: int, service_name: str):
+    def setup_check_data(self, service: Service, team: TeamManager, identifier: int, service_name: str):
         log.debug('creating score params data')
         data = dict()
         data.update({
@@ -211,13 +199,6 @@ class ScoringEngine():
         log.debug('score params set')
         return data
 
-    def export_all_as_csv(self):
-        for team_id, team in self.managers.items():
-            team.scores.export_csv('{}_scores'.format(
-                db_session.query(Team).filter(Team.id == team_id).one().username
-            ), scores_path)
-            db_session.close()
-
     # Deletes all records except for team records
     def delete_tables(self):
         log.debug('deleting all data except for team data')
@@ -229,6 +210,13 @@ class ScoringEngine():
         db_session.close()
 
     # Find/create methods for relevant competition data
+
+    def export_all_as_csv(self):
+        for team_id, team in self.managers.items():
+            team.scores.export_csv('{}_scores'.format(
+                db_session.query(Team).filter(Team.id == team_id).one().username
+            ), scores_path)
+            db_session.close()
 
     @classmethod
     def create_managers(cls, teams: list, services:list, credlists: dict) -> dict:

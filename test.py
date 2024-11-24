@@ -41,5 +41,6 @@ se.export_all_as_csv()"""
 
 if __name__ == '__main__':
     se = TestScoringEngine(5, 'Team{}')
-    se.score_services(1)
+
+    se.run(5)
     se.export_all_as_csv()
