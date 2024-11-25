@@ -11,7 +11,6 @@ from enigma.settings import log_file, log_level, log_output, logs_path, max_logs
 
 # Detect if this is the main process or not
 is_main = not bool(re.match(r'Process-\d+', current_process().name))
-print(current_process().name, is_main)
 
 # Writing a header to the log file because it looks better
 if is_main:

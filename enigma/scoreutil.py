@@ -24,6 +24,10 @@ def run_score_checks(check_data: dict, results_queue: Queue, managers: dict[Team
                     info_morsel
                 )
             )
+            log.debug('created worker for team {} scoring service {}'.format(
+                info_morsel['team'],
+                info_morsel['service']
+            ))
     log.debug('all score check workers spawned')
     for result in as_completed(results):
         if result.result() is not None:

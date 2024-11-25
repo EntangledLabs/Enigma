@@ -5,7 +5,7 @@ import random, csv, json
 import logging
 
 from concurrent.futures import as_completed, ThreadPoolExecutor
-from multiprocessing import Process, Queue, get_logger
+from multiprocessing import Process, Queue
 
 from enigma.models import Team, TeamCreds, SLAReport, ScoreHistory, InjectReport
 from enigma.util import Box, TeamManager, Inject
@@ -77,17 +77,24 @@ class ScoringEngine():
         log.info('++++==== Environment Info Gathered ====++++')
         # Starting from round 1
         self.round = 1
+
+        # Setting pause and commands queue
         self.pause = False
         # Create process for scoring
 
 
     # Scoring engine main loop
     def run(self, total_rounds: int=0):
-        while self.round < total_rounds or total_rounds == 0:
-            if not self.pause:
-                self.score_services(self.round)
-                self.round = self.round + 1
-                time.sleep(round_info['check_time'] + random.randint(-round_info['check_jitter'], round_info['check_jitter']))
+        while self.round <= total_rounds or total_rounds == 0:
+            while self.pause:
+                time.sleep(0.1)
+            log.info('++++==== Round {} ====++++'.format(self.round))
+            self.score_services(self.round)
+            self.round = self.round + 1
+            wait_time = round_info['check_time'] + random.randint(-round_info['check_jitter'], round_info['check_jitter']) 
+            log.info('Sleeping until next round start')
+            log.debug('waiting for {} seconds until next round')
+            time.sleep(wait_time)
 
     # Score check methods
 
@@ -100,7 +107,6 @@ class ScoringEngine():
     # If all score checks do not finish before timeout, then the score check process will be forcibly terminated
     # Any results thus sent are the only passed score checks
     def score_services(self, round: int):
-        log.info('++++==== Round {} ====++++'.format(round))
         log.info('Beginning scoring')
         log.debug('Setting up scoring functions and score check params')
         
@@ -120,7 +126,7 @@ class ScoringEngine():
                 }
                 check_data = list()
                 for team_id, team in self.managers.items():
-                    log.debug('creating worker for {} for service {}'.format(team.id, service_name))
+                    log.debug('creating check data for team {} for service {}'.format(team.id, service_name))
                     check_data.append(
                         self.setup_check_data(
                             service,
@@ -163,7 +169,7 @@ class ScoringEngine():
 
         if checks_process.is_alive():
             log.debug('checks timeout reached! terminating score check process immediately')
-            checks_process.terminate()
+            checks_process.kill()
 
         log.debug('updating innocent score checks')
         while not results_queue.empty():
@@ -176,7 +182,14 @@ class ScoringEngine():
 
         log.info('Score checks for round {} complete.'.format(round))# Score check methods
 
-    # Creates a tuple of data important to scoring
+    # Creates a dict of data important to scoring
+    # each check data consists of the following:
+    # {
+    #   'addr': ip address of team's box,
+    #   'team': team number,
+    #   'service': service being scored,
+    #   'creds': if creds are specified as a requirement, then a random cred
+    # }
     def setup_check_data(self, service: Service, team: TeamManager, identifier: int, service_name: str):
         log.debug('creating score params data')
         data = dict()

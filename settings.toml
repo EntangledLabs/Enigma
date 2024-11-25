@@ -1,6 +1,7 @@
 # Any database can be used here. The appropriate DB-API must be installed before use.
 # Tested with sqlite3
 # Specify 'DB_URL' within environment variables or a .env file
+# DB_URL = 'dialect+driver://username:password@host:port/database'
 
 # General settings
 

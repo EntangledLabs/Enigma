@@ -360,7 +360,7 @@ class TeamManager():
         inject_reports = db_session.query(InjectReport).filter(InjectReport.team_id == self.id).all()
         for inject in inject_reports:
             if f'inject{inject.inject_num}' in self.scores.scores and self.scores.scores[f'inject{inject.inject_num}'] == inject.score:
-                log.warning('cannot add inject {} to score, already exists'.format(inject.inject_num))
+                log.warning('not adding inject {} to score, already exists'.format(inject.inject_num))
                 continue
             else:
                 self.scores.award_inject_points(inject.inject_num, inject.score)
