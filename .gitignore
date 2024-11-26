@@ -19,10 +19,6 @@ build/
 
 */logs/*.log
 
-*/scores/*.csv
-
-*/test_artifacts/*.csv
-*/test_artifacts/*.txt
-*/test_artifacts/*.json
+enigma/scores/*.csv
 
 .VSCodeCounter/
