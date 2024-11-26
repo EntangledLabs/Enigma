@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import asyncio
 
+from engine import log
+
 # Abstract class Service
 # All services are derived from Service
 # Add any Service classes to this file or to a file importing Service from enigma.checks
@@ -55,7 +57,7 @@ class RandomService(Service):
         return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__, self.port)
 
     async def conduct_service_check(self, data: dict):
-        print('starting random check')
+        log.info('Conducting Random service check')
         await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
@@ -65,6 +67,7 @@ class RandomService(Service):
                 'message'
             )
         return
+    
     @classmethod
     def new(cls, data: dict):
         return cls()
@@ -88,6 +91,7 @@ class SSHService(Service):
             if keyfile is None:
                 raise SystemExit(0)
             self.keyfile = keyfile
+        log.debug('created SSHService object')
 
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)

@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends
 
 from typing import List
 
+from engine import log
+
 sla_report_router = APIRouter(
     prefix='/sla-reports',
     tags=['sla-reports'],
@@ -45,7 +47,6 @@ injects_router = APIRouter(
 class Settings(SQLModel, table=True):
     __tablename__ = 'settings'
     id: int | None = Field(default=None, primary_key=True)
-    log_level: str = Field(default='info')
     competitor_info: str = Field(default='minimal')
     pcr_portal: bool = Field(default=True)
     inject_portal: bool = Field(default=True)

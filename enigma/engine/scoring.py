@@ -11,6 +11,7 @@ from engine.database import db_engine, init_db, del_db
 from engine.models import TeamTable, CredlistTable, TeamCredsTable, SLAReport, InjectReport, ScoreReport, InjectTable, BoxTable, Settings
 from engine.settings import scores_path
 from engine.checks import Service
+from engine import log
 
 class ScoringEngine():
     

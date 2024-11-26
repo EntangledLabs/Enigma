@@ -1,11 +1,11 @@
 import asyncio
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 import uvicorn
 
 from engine import models
 from engine.database import init_db, del_db
-
 from engine.scoring import ScoringEngine, TestScoringEngine
 
 @asynccontextmanager
