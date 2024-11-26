@@ -6,7 +6,6 @@ from multiprocessing import Process, Queue
 
 from sqlmodel import Session, select, delete
 
-from engine.scoreutil import run_score_checks
 from engine.util import Box, Inject, Team, Credlist, FileConfigLoader
 from engine.database import db_engine, init_db, del_db
 from engine.models import TeamTable, CredlistTable, TeamCredsTable, SLAReport, InjectReport, ScoreReport, InjectTable, BoxTable, Settings
@@ -47,15 +46,17 @@ class ScoringEngine():
     async def run(self, total_rounds: int=0):
         print('horray u didnt done goof it up')
         while self.round <= total_rounds or total_rounds == 0:
+            print('round {}'.format(self.round))
             while self.pause:
                 await asyncio.sleep(0.1)
             await self.score_services(self.round)
             self.round = self.round + 1
             with Session(db_engine) as session:
                 check_jitter = session.exec(select(Settings)).one().check_jitter
-                wait_time = session.exec(select(Settings)).one().check_time 
-                + random.randint(-check_jitter, check_jitter) 
-            await time.sleep(wait_time)
+                wait_time = session.exec(select(Settings)).one().check_time + random.randint(-check_jitter, check_jitter) 
+            print('round 1 done')
+            await asyncio.sleep(wait_time)
+        print('all done!')
         self.export_all_as_csv()
 
     # Score check methods
@@ -116,17 +117,9 @@ class ScoringEngine():
                         service: False
                     })
 
-        results_queue = Queue()
-        checks_process = Process(target=run_score_checks, args=(score_checks, results_queue, self.teams, all_services))
-        checks_process.start()
-        with Session(db_engine) as session:
-            await checks_process.join(session.exec(select(Settings)).one().check_timeout)
-
-        if checks_process.is_alive():
-            checks_process.kill()
-
-        while not results_queue.empty():
-            result = results_queue.get()
+        results = await self.run_score_checks(score_checks, self.teams, self.services)
+        
+        for result in results:
             reports[result[0]][result[1]] = True
 
         for team_id, team in self.teams.items():
@@ -158,6 +151,30 @@ class ScoringEngine():
                 'creds': team.get_random_cred(service.credlist)
             })
         return data
+    
+    async def run_score_checks(self, check_data: dict, teams: dict[Team], services: list[str]):
+        results = []
+        tasks = []
+        for service, info in check_data.items():
+            for info_morsel in info['check_data']:
+                tasks.append(asyncio.create_task(info['func'](info_morsel)))
+
+        try:
+            with Session(db_engine) as session:
+                async for result in asyncio.as_completed(tasks, timeout=session.exec(select(Settings)).one().check_timeout):
+                    data = result.result()
+                    if data is not None:
+                        results.append(data)
+
+        except TimeoutError:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+        
+        return results
+    
+    async def score_check_task(self):
+        pass
 
     # Deletes all records except for team records
     def delete_tables(self):

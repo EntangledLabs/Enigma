@@ -1,6 +1,7 @@
 import random
 from abc import ABC, abstractmethod
-from time import sleep
+
+import asyncio
 
 # Abstract class Service
 # All services are derived from Service
@@ -31,7 +32,7 @@ class Service(ABC):
     # e.x. If Team01 has identifier '32', and an SSHService is configured on Box 'examplebox' with host octet 5,
     #      then the worker process will target 172.16.32.5
     @abstractmethod
-    def conduct_service_check(self, **kwargs):
+    async def conduct_service_check(self, **kwargs):
         pass
     
     # Service.new(data) is called to create a new Service object with all of the proper parameters assigned
@@ -44,6 +45,29 @@ class Service(ABC):
         pass
 
 # Service checks
+
+# Performs a random check
+class RandomService(Service):
+
+    name = 'random'
+
+    def __repr__(self):
+        return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__, self.port)
+
+    async def conduct_service_check(self, data: dict):
+        print('starting random check')
+        await asyncio.sleep(random.randint(1,10))
+        result = random.choice([True, False])
+        if result:
+            return (
+                data['team'],
+                data['service'],
+                'message'
+            )
+        return
+    @classmethod
+    def new(cls, data: dict):
+        return cls()
 
 # Performs a simple SSH connection service check
 # If a connection is established, the check passes
@@ -68,9 +92,10 @@ class SSHService(Service):
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
 
-    def conduct_service_check(self, data: dict):
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        sleep(random.randint(1,10))
+        print('starting ssh check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
             return (
@@ -103,9 +128,10 @@ class HTTPService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict):
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        sleep(random.randint(1,10))
+        print('starting http check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
             return (
@@ -135,9 +161,10 @@ class HTTPSService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict):
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        sleep(random.randint(1,10))
+        print('starting https check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
             return (

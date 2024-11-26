@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     del_db()
     init_db()
     se = TestScoringEngine(5, 'Team{}')
-    asyncio.create_task(se.run(5))
+    asyncio.create_task(se.run(10))
     yield
 
 app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', lifespan=lifespan)
