@@ -9,7 +9,7 @@ from engine.database import db_engine
 from engine.models import *
 from engine.settings import scores_path
 from engine.checks import Service
-from engine import _enginelock
+from engine import log, _enginelock
 
 engine_router = APIRouter(
     prefix='/engine',
