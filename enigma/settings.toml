@@ -1,27 +1,15 @@
-# Any database can be used here. The appropriate DB-API must be installed before use.
-# Tested with sqlite3
-# Specify 'DB_URL' within environment variables or a .env file
-# DB_URL = 'dialect+driver://username:password@host:port/database'
+# Settings loaded upon run. Modifications made in Parable are NOT reflected here
 
-# General settings
+# General settings - these are never modified
 
 [general]
 log_level = 'debug'                         # Extra information for debugging
-log_to = ['file', 'console']                           # Where to log to - file stores an enigma_{time}.log, console outputs to console
+log_to = ['file', 'console']                # Where to log to - file stores an enigma_{time}.log, console outputs to console
 max_logs = 5                                # Maximum number of logs to store, set to 0 to disable
 competitor_info = 'minimal'                 # Level of info to show competitors [minimal, typical, extra]
 pcr_portal = true                           # Enables a portal for competitors to submit password change requests
 inject_portal = true                        # Enables a portal for competitors to access injects
 name = 'example'                            # Name of the competition
-
-# File location settings
-[paths]
-boxes_path = './boxes/'                     # Path to boxes config directory
-creds_path = './creds/'                     # Path to creds config directory
-logs_path = './logs/'                       # Path to logs config directory
-injects_path = './injects/'                 # Path to injects config directory
-test_artifacts_path = './test_artifacts/'   # Path to test artifacts directory (only used for testing)
-scores_path = './scores/'                   # Path to scores directory
 
 # Round settings
 
@@ -34,8 +22,8 @@ sla_requirement = 5                         # Number of consecutive failed check
 sla_penalty = 100                           # Points deducted for an SLA violation
 
 # Environment definition
-# QuikScore assumes that the third octet is unique per team
-# QuikScore also assumes that the first team is assigned pod 1, the second team pod 2, and so on
+# Enigma assumes that the third octet is unique per team
+# Enigma also assumes that the first team is assigned pod 1, the second team pod 2, and so on
 
 [environment]
 first_octets = '172.16'                     # First two octets for the IP addresses of the boxes
