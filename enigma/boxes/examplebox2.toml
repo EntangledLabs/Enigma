@@ -1,4 +1,3 @@
-name = 'examplebox2'
 identifier = 2                          # Host number for the box IP
 
 # SSH check

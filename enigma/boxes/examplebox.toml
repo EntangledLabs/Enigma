@@ -1,6 +1,7 @@
 ## Box Example Configuration ##
+# Each box is defined in a file with name 'boxname.toml'
+# Box names are assumed from the filename
 
-name = 'examplebox'                     # Box name
 identifier = 1                          # Host number for the box IP
 
 # SSH check

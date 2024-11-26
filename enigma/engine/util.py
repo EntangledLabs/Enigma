@@ -10,8 +10,8 @@ import tomli_w
 
 from engine.database import db_engine
 from engine.checks import Service
-from engine.settings import settings, boxes_path, creds_path, injects_path
-from engine.models import InjectReport, SLAReport, ScoreReport
+from engine.settings import boxes_path, creds_path, injects_path
+from engine.models import InjectReport, SLAReport, ScoreReport, Settings
 from engine.models import TeamCredsTable, TeamTable, BoxTable, InjectTable, CredlistTable
 
 ###################################################
@@ -54,10 +54,10 @@ class Box():
 
     # Creates a new Box object from a config file or string
     @classmethod
-    def new(cls, data: str):
+    def new(cls, name:str, data: str):
         data = tomllib.loads(data)
         box = cls(
-            name=data['name'],
+            name=name,
             identifier=data['identifier'],
             services=cls.compile_services(data)
         )
@@ -145,10 +145,10 @@ class Inject():
     
     # Creates a new Inject based on the config info
     @classmethod
-    def new(cls, data: str):
+    def new(cls, num: int, data: str):
         data = tomllib.loads(data)
         inject = cls(
-            num=data['num'],
+            num=num,
             name=data['name'],
             desc=data['description'],
             worth=data['worth'],
@@ -174,11 +174,17 @@ class Team():
         self.scores = dict.fromkeys(services, 0)
         self.penalty_scores = {}
         self.sla_tracker = {}
-        self.credlists = {}
-        for credlist in credlists:
-            self.credlists.update({
-                credlist.name: credlist.creds.copy()
-            })
+
+        with Session(db_engine) as session:
+            for credlist in credlists:
+                session.add(
+                    TeamCredsTable(
+                        name=credlist.name,
+                        team_id=self.identifier,
+                        creds=json.dumps(credlist.creds)
+                    )
+                )
+            session.commit()
 
     def __repr__(self):
         return '<{}> with team id {}, scores object {}, and credlist with {}'.format(
@@ -212,30 +218,30 @@ class Team():
                     })
                 else:
                     # Previous SLA violating tracking is found, determining if SLA threshold is met
-                    if self.sla_tracker.get(service) == settings['round']['sla_requirement'] - 1:
-                        # Full SLA violation, creating SLA report and deducting points
-                        self.award_sla_penalty(service)
-                        self.sla_tracker.pop(service)
-                        with Session(db_engine) as session:
+                    with Session(db_engine) as session:
+                        if self.sla_tracker.get(service) == session.exec(select(Settings)).one().sla_requirement - 1:
+                            # Full SLA violation, creating SLA report and deducting points
+                            self.award_sla_penalty(service)
+                            self.sla_tracker.pop(service)
                             session.add(
                                 SLAReport(
-                                    team_id = self.id,
+                                    team_id = self.identifier,
                                     round = round,
                                     service = service
                                 )
                             )
                             session.commit()
-                    else:
-                        # Threshold not met, extending SLA tracker
-                        self.sla_tracker.update({
-                            service: self.sla_tracker.pop(service) + 1
-                        })
+                        else:
+                            # Threshold not met, extending SLA tracker
+                            self.sla_tracker.update({
+                                service: self.sla_tracker.pop(service) + 1
+                            })
 
         # Inject tabulation
         with Session(db_engine) as session:
             inject_reports = session.exec(
                 select(InjectReport).where(
-                    InjectReport.team_id == self.id
+                    InjectReport.team_id == self.identifier
                 )
             ).all()
         for inject in inject_reports:
@@ -248,9 +254,9 @@ class Team():
         with Session(db_engine) as session:
             session.add(
                 ScoreReport(
-                    team_id = self.id,
+                    team_id = self.identifier,
                     round = round,
-                    score = self.scores.total_score
+                    score = self.total_scores['total_score']
                 )
             )
             session.commit()
@@ -294,9 +300,10 @@ class Team():
     def award_service_points(self, service: str):
         if service not in self.scores.keys():
             return
-        self.scores.update({
-            service: (self.scores.pop(service) + self.service_points)
-        })
+        with Session(db_engine) as session:
+            self.scores.update({
+                service: (self.scores.pop(service) + session.exec(select(Settings)).one().check_points)
+            })
         self.update_total()
 
     def award_inject_points(self, inject_num: int, points: int):
@@ -310,13 +317,15 @@ class Team():
     def award_sla_penalty(self, service: str):
         sla_str = f'sla-{service}'
         if sla_str not in self.penalty_scores.keys():
-            self.penalty_scores.update({
-                sla_str: self.sla_points
-            })
+            with Session(db_engine) as session:
+                self.penalty_scores.update({
+                    sla_str: session.exec(select(Settings)).one().sla_penalty
+                })
         else:
-            self.penalty_scores.update({
-                sla_str: (self.penalty_scores.pop(sla_str) + self.sla_points)
-            })
+            with Session(db_engine) as session:
+                self.penalty_scores.update({
+                    sla_str: (self.penalty_scores.pop(sla_str) + session.exec(select(Settings)).one().sla_penalty)
+                })
         self.update_total()
 
     # Things to do with the data
@@ -335,9 +344,9 @@ class Team():
             writer.writeheader()
             writer.writerow({
                 fieldnames[0]: 'total',
-                fieldnames[1]: self.raw_score,
-                fieldnames[2]: self.penalty_score,
-                fieldnames[3]: self.total_score
+                fieldnames[1]: self.total_scores['raw_score'],
+                fieldnames[2]: self.total_scores['penalty_score'],
+                fieldnames[3]: self.total_scores['total_score']
             })
             
             rows = list()
@@ -398,7 +407,7 @@ class Team():
             session.add(
                 TeamCredsTable(
                     name = credslist.items()[0].keys()[0],
-                    team_id = self.id,
+                    team_id = self.identifier,
                     creds = credslist.items()[0].keys()[1]
                 )
             )
@@ -413,7 +422,7 @@ class Team():
                     select(TeamCredsTable).where(
                         TeamCredsTable.name == random.choice(credlists)
                     ).where(
-                        TeamCredsTable.team_id == self.id
+                        TeamCredsTable.team_id == self.identifier
                     )
                 ).all()[0].creds
             )
@@ -428,14 +437,14 @@ class Team():
     def pcr(self, new_creds: dict) -> None:
         with Session(db_engine) as session:
             for credlist, creds in new_creds.items():
-                team = session.exec(
+                old_creds = session.exec(
                     select(TeamCredsTable).where(
                         TeamCredsTable.name == credlist
                     ).where(
-                        TeamCredsTable.team_id == self.id
+                        TeamCredsTable.team_id == self.identifier
                     )
-                ).all()[0]
-                mod_creds = json.loads(team.creds)
+                ).one()
+                mod_creds = json.loads(old_creds.creds)
                 for user in creds.keys():
                     if user not in mod_creds:
                         continue
@@ -443,7 +452,7 @@ class Team():
                         mod_creds.update({
                             user: creds.get(user)
                         })
-                team.creds = json.dumps(mod_creds)
+                old_creds.creds = json.dumps(mod_creds)
                 session.commit()
 
     # Creates a new Team from the config info
@@ -462,6 +471,30 @@ class Team():
 class FileConfigLoader():
 
     @classmethod
+    def load_settings(cls):
+        with open('./settings.toml', 'rb') as f:
+            data = tomllib.load(f)
+        with Session(db_engine) as session:
+            session.add(
+                Settings(
+                    log_level=data['general']['log_level'],
+                    competitor_info=data['general']['competitor_info'],
+                    pcr_portal=data['general']['pcr_portal'],
+                    inject_portal=data['general']['inject_portal'],
+                    comp_name=data['general']['name'],
+                    check_time=data['round']['check_time'],
+                    check_jitter=data['round']['check_jitter'],
+                    check_timeout=data['round']['check_timeout'],
+                    check_points=data['round']['check_points'],
+                    sla_requirement=data['round']['sla_requirement'],
+                    sla_penalty=data['round']['sla_penalty'],
+                    first_octets=data['environment']['first_octets'],
+                    first_pod_third_octet=data['environment']['first_pod_third_octet']
+                )
+            )
+            session.commit()
+
+    @classmethod
     def load_boxes(cls):
         box_files = [f for f in listdir(boxes_path) 
                      if isfile(join(boxes_path, f)) 
@@ -472,7 +505,7 @@ class FileConfigLoader():
                 with Session(db_engine) as session:
                     session.add(
                         BoxTable(
-                            name=data['name'],
+                            name=splitext(box_file)[0].lower(),
                             identifier=data['identifier'],
                             config=tomli_w.dumps(data)
                         )
@@ -511,7 +544,7 @@ class FileConfigLoader():
                 with Session(db_engine) as session:
                     session.add(
                         InjectTable(
-                            num=data['number'],
+                            num=int(splitext(inject_file)[0].lower()[-1]),
                             name=data['name'],
                             config=tomli_w.dumps(data)
                         )
@@ -520,6 +553,7 @@ class FileConfigLoader():
 
     @classmethod
     def load_all(cls):
+        cls.load_settings()
         cls.load_boxes()
         cls.load_creds()
         cls.load_injects()

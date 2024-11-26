@@ -1,7 +1,7 @@
 ## Inject Example Configuration ##
+# Inject files should be named 'inject<number>.toml', where <number> is the inject number
 
 name = 'Example Inject'                                             # Name of the inject
-number = 1                                                          # Inject number
 description = '''I guess this is a description'''                   # A description of the inject
 worth = 100                                                         # Total possible points
 path = ''                                                           # Path to supplemental info, optional (put '' if none)

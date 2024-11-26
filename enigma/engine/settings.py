@@ -9,9 +9,6 @@ load_dotenv()
 
 db_url = getenv('DB_URL')
 
-with open('./settings.toml', 'rb') as f:
-    settings = tomllib.load(f)
-
 boxes_path = './boxes/'                     # Path to boxes config directory
 creds_path = './creds/'                     # Path to creds config directory
 logs_path = './logs/'                       # Path to logs config directory

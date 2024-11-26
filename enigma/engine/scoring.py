@@ -1,5 +1,6 @@
 import time, sched
 import random, json
+import asyncio
 
 from multiprocessing import Process, Queue
 
@@ -8,8 +9,9 @@ from sqlmodel import Session, select, delete
 from engine.scoreutil import run_score_checks
 from engine.util import Box, Inject, Team, Credlist, FileConfigLoader
 from engine.database import db_engine, init_db, del_db
-from engine.models import TeamTable, CredlistTable, TeamCredsTable, SLAReport, InjectReport, ScoreReport, InjectTable, BoxTable
-from engine.settings import settings, scores_path
+from engine.models import TeamTable, CredlistTable, TeamCredsTable, SLAReport, InjectReport, ScoreReport, InjectTable, BoxTable, Settings
+from engine.settings import scores_path
+from engine.checks import Service
 
 class ScoringEngine():
     
@@ -19,21 +21,22 @@ class ScoringEngine():
         FileConfigLoader.load_all()
 
         # Initialize environment information
-        self.name = settings['general']['name']
-        self.boxes = self.find_boxes()
-        self.services = Box.full_service_list(self.boxes)
+        with Session(db_engine) as session:
+            self.name = session.exec(select(Settings)).one().comp_name
+            self.boxes = self.find_boxes()
+            self.services = Box.full_service_list(self.boxes)
 
-        self.credlists = self.find_credlists()
+            self.credlists = self.find_credlists()
 
-        self.teams = self.find_teams()
+            self.teams = self.find_teams()
 
-        self.environment = settings['environment']['first_octets']
+            self.environment = session.exec(select(Settings)).one().first_octets
 
-        # Verify settings
-        if settings['round']['check_jitter'] >= settings['round']['check_time']:
-            raise SystemExit(0)
-        if settings['round']['check_timeout'] >= settings['round']['check_time'] - settings['round']['check_jitter']:
-            raise SystemExit(0)
+            # Verify settings
+            if session.exec(select(Settings)).one().check_jitter >= session.exec(select(Settings)).one().check_time:
+                raise SystemExit(0)
+            if session.exec(select(Settings)).one().check_timeout >= session.exec(select(Settings)).one().check_time - session.exec(select(Settings)).one().check_jitter:
+                raise SystemExit(0)
 
         # Starting from round 1
         self.round = 1
@@ -45,11 +48,14 @@ class ScoringEngine():
         print('horray u didnt done goof it up')
         while self.round <= total_rounds or total_rounds == 0:
             while self.pause:
-                time.sleep(0.1)
-            self.score_services(self.round)
+                await asyncio.sleep(0.1)
+            await self.score_services(self.round)
             self.round = self.round + 1
-            wait_time = settings['round']['check_time'] + random.randint(-settings['round']['check_jitter'], settings['round']['check_jitter']) 
-            time.sleep(wait_time)
+            with Session(db_engine) as session:
+                check_jitter = session.exec(select(Settings)).one().check_jitter
+                wait_time = session.exec(select(Settings)).one().check_time 
+                + random.randint(-check_jitter, check_jitter) 
+            await time.sleep(wait_time)
         self.export_all_as_csv()
 
     # Score check methods
@@ -62,7 +68,7 @@ class ScoringEngine():
     # As score checks results come in, they are sent to the main thread if they are true (presumed guilty means no need to report guilt)
     # If all score checks do not finish before timeout, then the score check process will be forcibly terminated
     # Any results thus sent are the only passed score checks
-    def score_services(self, round: int):
+    async def score_services(self, round: int):
         # identifies all service check functions and creates scoring params for each team
 
         # tired of keeping track of nested data structures
@@ -113,7 +119,8 @@ class ScoringEngine():
         results_queue = Queue()
         checks_process = Process(target=run_score_checks, args=(score_checks, results_queue, self.teams, all_services))
         checks_process.start()
-        checks_process.join(settings['round']['check_timeout'])
+        with Session(db_engine) as session:
+            await checks_process.join(session.exec(select(Settings)).one().check_timeout)
 
         if checks_process.is_alive():
             checks_process.kill()
@@ -124,6 +131,33 @@ class ScoringEngine():
 
         for team_id, team in self.teams.items():
             team.tabulate_scores(round, reports[team_id])
+
+    # Creates a dict of data important to scoring
+    # each check data consists of the following:
+    # {
+    #   'addr': ip address of team's box,
+    #   'team': team number,
+    #   'service': service being scored,
+    #   'creds': if creds are specified as a requirement, then a random cred
+    # }
+    def setup_check_data(self, service: Service, team: Team, box_ident: int, service_name: str):
+        data = dict()
+        data.update({
+            'addr': '{}.{}.{}'.format(
+                self.environment,
+                team.identifier,
+                box_ident
+            )
+        })
+        data.update({
+            'team': team.identifier,
+            'service': service_name
+        })
+        if hasattr(service, 'credlist'):
+            data.update({
+                'creds': team.get_random_cred(service.credlist)
+            })
+        return data
 
     # Deletes all records except for team records
     def delete_tables(self):
@@ -141,7 +175,7 @@ class ScoringEngine():
 
     def export_all_as_csv(self):
         for team_id, team in self.teams.items():
-            team.export_csv('{}_scores'.format(team.name), scores_path)
+            team.export_scores_csv('{}_scores'.format(team.name), scores_path)
 
     def find_boxes(self):
         boxes = list()
@@ -149,7 +183,7 @@ class ScoringEngine():
             db_boxes = session.exec(select(BoxTable)).all()
             for db_box in db_boxes:
                 boxes.append(
-                    Box.new(db_box.config)
+                    Box.new(db_box.name, db_box.config)
                 )
         return boxes
 
@@ -189,7 +223,7 @@ class ScoringEngine():
             db_injects = session.exec(select(InjectTable)).all()
         for db_inject in db_injects:
             injects.append(
-                Inject.new(data=db_inject.config)
+                Inject.new(db_inject.num, db_inject.config)
             )
         return injects
     
@@ -209,5 +243,6 @@ class TestScoringEngine(ScoringEngine):
                     score=0
                 )
             )
+            session.commit()
 
         super().__init__()
