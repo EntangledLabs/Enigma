@@ -1,10 +1,7 @@
-import random, logging
+import random
 from abc import ABC, abstractmethod
-from time import sleep
 
-from enigma.database import db_session
-
-log = logging.getLogger('enigma')
+import asyncio
 
 # Abstract class Service
 # All services are derived from Service
@@ -35,7 +32,7 @@ class Service(ABC):
     # e.x. If Team01 has identifier '32', and an SSHService is configured on Box 'examplebox' with host octet 5,
     #      then the worker process will target 172.16.32.5
     @abstractmethod
-    def conduct_service_check(self, **kwargs):
+    async def conduct_service_check(self, **kwargs):
         pass
     
     # Service.new(data) is called to create a new Service object with all of the proper parameters assigned
@@ -49,6 +46,29 @@ class Service(ABC):
 
 # Service checks
 
+# Performs a random check
+class RandomService(Service):
+
+    name = 'random'
+
+    def __repr__(self):
+        return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__, self.port)
+
+    async def conduct_service_check(self, data: dict):
+        print('starting random check')
+        await asyncio.sleep(random.randint(1,10))
+        result = random.choice([True, False])
+        if result:
+            return (
+                data['team'],
+                data['service'],
+                'message'
+            )
+        return
+    @classmethod
+    def new(cls, data: dict):
+        return cls()
+
 # Performs a simple SSH connection service check
 # If a connection is established, the check passes
 class SSHService(Service):
@@ -57,7 +77,6 @@ class SSHService(Service):
 
     def __init__(self, credlist: list[str], port: int, auth: list, keyfile: str):
         if not credlist:
-            log.critical('Credlist was not defined for SSH, terminating...')
             raise SystemExit(0)
         self.credlist = credlist
         self.port = port
@@ -67,30 +86,27 @@ class SSHService(Service):
             self.auth = auth
         if 'pubkey' in self.auth:
             if keyfile is None:
-                log.critical('Pubkey authentication has been selected but no keyfile was given! terminating...')
                 raise SystemExit(0)
             self.keyfile = keyfile
 
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
 
-    def conduct_service_check(self, data: dict):
-        log.debug('conducting service check for ssh')
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        log.warning('Service check for SSH not properly implemented')
-        sleep(random.randint(1,10))
+        print('starting ssh check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
         if result:
             return (
                 data['team'],
-                data['service']
+                data['service'],
+                'message'
             )
         return
 
     @classmethod
     def new(cls, data: dict):
-        log.debug('created a SSHService')
         return cls(
             data['credlist'] if 'credlist' in data else None,
             data['port'] if 'port' in data else 22,
@@ -112,22 +128,20 @@ class HTTPService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict):
-        log.debug('conducting service check for http')
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        log.warning('Service check for HTTP not properly implemented')
-        sleep(random.randint(1,10))
+        print('starting http check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
         if result:
             return (
                 data['team'],
-                data['service']
+                data['service'],
+                'message'
             )
         return
     @classmethod
     def new(cls, data: dict):
-        log.debug('created a HTTPService')
         return cls(
             data['port'] if 'port' in data else 80,
             data['path'] if 'path' in data else None
@@ -147,22 +161,20 @@ class HTTPSService(Service):
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
 
-    def conduct_service_check(self, data: dict):
-        log.debug('conducting service check for https')
+    async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        log.warning('Service check for HTTPS not properly implemented')
-        sleep(random.randint(1,10))
+        print('starting https check')
+        await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        log.debug('service check completed with result {} for team {}'.format(result, data['team']))
         if result:
             return (
                 data['team'],
-                data['service']
+                data['service'],
+                'message'
             )
         return
     @classmethod
     def new(cls, data: dict):
-        log.debug('created a HTTPSService')
         return cls(
             data['port'] if 'port' in data else 80,
             data['path'] if 'path' in data else None

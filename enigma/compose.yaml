@@ -1,0 +1,15 @@
+version: 0.0.1
+services:
+  enigma:
+    build: .
+    ports:
+      - "4731:4731"
+    env_file:
+      - ".env"
+    environment:
+      - DB_URL: ${DB_URL}
+    depends_on:
+      postgres:
+        condition: service_started
+  postgres:
+    image: postgres:alpine

@@ -1,0 +1,36 @@
+services:
+  enigma:
+    build: ./enigma
+    depends_on:
+      proxy:
+        condition: service_healthy
+        restart: true
+      db:
+        condition: service_healthy
+        restart: true
+
+  parable:
+    build: ./parable
+    depends_on:
+      enigma:
+        condition: service_healthy
+        restart: true
+
+  proxy:
+    image: 'nginx:stable-alpine'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+
+  db:
+    image: 'postgres:alpine'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s

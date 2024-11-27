@@ -17,10 +17,12 @@ build/
 
 *.db
 
-logs/*.log
+*/logs/*.log
 
-scores/*.csv
+*/scores/*.csv
 
-test_artifacts/*.csv
-test_artifacts/*.txt
-test_artifacts/*.json
+*/test_artifacts/*.csv
+*/test_artifacts/*.txt
+*/test_artifacts/*.json
+
+.VSCodeCounter/

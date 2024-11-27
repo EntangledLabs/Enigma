@@ -1,5 +1,5 @@
 ## Inject Example Configuration ##
-# Each inject is defined in a file with name 'inject<inject number>.toml'
+# Inject files should be named 'inject<number>.toml', where <number> is the inject number
 
 name = 'Example Inject'                                             # Name of the inject
 description = '''I guess this is a description'''                   # A description of the inject
