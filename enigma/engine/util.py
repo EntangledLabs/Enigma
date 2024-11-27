@@ -383,7 +383,6 @@ class Team():
     #######################
     # Creds methods
 
-
     # Returns a dict with all of the creds
     # Mostly used for debugging
     def get_all_creds(self) -> dict:

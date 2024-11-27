@@ -1,2 +1,2 @@
 is_scoring = False
-is_running = True
+is_running = False
