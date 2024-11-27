@@ -1,6 +1,6 @@
 services:
   enigma:
-    build: ./enigma.backend/
+    build: ./enigma
     depends_on:
       proxy:
         condition: service_healthy
@@ -13,8 +13,8 @@ services:
     build: ./parable
     depends_on:
       enigma:
-      condition: service_healthy
-      restart: true
+        condition: service_healthy
+        restart: true
 
   proxy:
     image: 'nginx:stable-alpine'

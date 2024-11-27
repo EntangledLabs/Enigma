@@ -15,3 +15,5 @@ logs_path = './logs/'                       # Path to logs config directory
 injects_path = './injects/'                 # Path to injects config directory
 test_artifacts_path = './test_artifacts/'   # Path to test artifacts directory (only used for testing)
 scores_path = './scores/'                   # Path to scores directory
+
+not_found_response = {404: {'description': 'Not Found'}}

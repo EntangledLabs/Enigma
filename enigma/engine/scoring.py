@@ -1,16 +1,20 @@
-import time, sched
 import random, json
 import asyncio
 
-from multiprocessing import Process, Queue
-
+from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, delete
 
 from engine.util import Box, Inject, Team, Credlist, FileConfigLoader
-from engine.database import db_engine, init_db, del_db
-from engine.models import TeamTable, CredlistTable, TeamCredsTable, SLAReport, InjectReport, ScoreReport, InjectTable, BoxTable, Settings
+from engine.database import db_engine
+from engine.models import *
 from engine.settings import scores_path
 from engine.checks import Service
+from engine import is_running, is_scoring
+
+engine_router = APIRouter(
+    prefix='/engine',
+    tags=['engine']
+)
 
 class ScoringEngine():
     
@@ -24,10 +28,9 @@ class ScoringEngine():
             self.name = session.exec(select(Settings)).one().comp_name
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
-
             self.credlists = self.find_credlists()
-
             self.teams = self.find_teams()
+            self.injects = self.find_injects()
 
             self.environment = session.exec(select(Settings)).one().first_octets
 
@@ -44,19 +47,26 @@ class ScoringEngine():
         self.pause = False
 
     async def run(self, total_rounds: int=0):
-        print('horray u didnt done goof it up')
+        is_running = True
         while self.round <= total_rounds or total_rounds == 0:
             print('round {}'.format(self.round))
             while self.pause:
                 await asyncio.sleep(0.1)
+            #self.boxes = self.find_boxes()
+            #self.credlists = self.find_credlists()
+            #self.teams = self.find_teams()
+            #self.injects = self.find_injects()
+            is_scoring = True
             await self.score_services(self.round)
             self.round = self.round + 1
             with Session(db_engine) as session:
                 check_jitter = session.exec(select(Settings)).one().check_jitter
                 wait_time = session.exec(select(Settings)).one().check_time + random.randint(-check_jitter, check_jitter) 
             print('round 1 done')
+            is_scoring = False
             await asyncio.sleep(wait_time)
         print('all done!')
+        is_running = False
         self.export_all_as_csv()
 
     # Score check methods
@@ -243,6 +253,13 @@ class ScoringEngine():
                 Inject.new(db_inject.num, db_inject.config)
             )
         return injects
+    
+    # TODO
+    def update_environment(self):
+        pass
+
+
+
     
 class TestScoringEngine(ScoringEngine):
     

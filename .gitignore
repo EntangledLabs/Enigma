@@ -24,3 +24,5 @@ build/
 */test_artifacts/*.csv
 */test_artifacts/*.txt
 */test_artifacts/*.json
+
+.VSCodeCounter/

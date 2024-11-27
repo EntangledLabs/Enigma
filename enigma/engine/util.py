@@ -3,7 +3,6 @@ from os.path import join, splitext, isfile
 import tomllib, csv, json
 import random
 
-from fastapi import Depends
 from sqlmodel import Session, select
 
 import tomli_w
