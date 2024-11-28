@@ -4,10 +4,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 import uvicorn
 
+import discord
+
 from engine.routes import box_router, creds_router, injects_router, team_router, sla_report_router, inject_report_router, score_report_router, settings_router
 from engine.database import init_db, del_db
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
+from engine.settings import discord_api_key
+
+from bot.util import EnigmaClient
 
 # Initialize the DB
 del_db()
@@ -19,9 +24,15 @@ FileConfigLoader.load_all()
 # Create the scoring engine
 se = ScoringEngine()
 
+# Create the discord bot
+intents = discord.intents.default()
+intents.message_content = True
+bot = EnigmaClient(intents=intents)
+
 # Lifespan event for any tasks that run on start
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await bot.start(discord_api_key)
     yield
 
 # Creating new FastAPI app

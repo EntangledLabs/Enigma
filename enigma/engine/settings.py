@@ -8,6 +8,7 @@ from os import getcwd
 load_dotenv()
 
 db_url = getenv('DB_URL')
+discord_api_key = getenv('DISCORD_API_KEY')
 
 boxes_path = './boxes/'                     # Path to boxes config directory
 creds_path = './creds/'                     # Path to creds config directory
