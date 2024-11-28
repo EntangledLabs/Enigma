@@ -25,15 +25,22 @@ FileConfigLoader.load_all()
 se = ScoringEngine()
 
 # Create the discord bot
-intents = discord.intents.default()
+intents = discord.Intents.default()
 intents.message_content = True
 bot = EnigmaClient(intents=intents)
+
+async def bot_run():
+    try:
+        await bot.start(discord_api_key)
+    except KeyboardInterrupt:
+        await bot.close()
 
 # Lifespan event for any tasks that run on start
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await bot.start(discord_api_key)
+    asyncio.create_task(bot_run())
     yield
+    bot.close()
 
 # Creating new FastAPI app
 app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', lifespan=lifespan)
@@ -56,12 +63,7 @@ app.include_router(score_report_router)
 async def start_scoring():
     if se.is_running:
         raise HTTPException(status_code=423, detail='Enigma is already running!')
-    run_engine = [asyncio.create_task(se.run())]
-    try:
-        async for result in asyncio.as_completed(run_engine, timeout=3):
-            pass
-    except Exception:
-        raise HTTPException(status_code=503, detail='Enigma could not be started for some reason')
+    run_engine = asyncio.create_task(se.run())
     return {'ok': True}
 
 @app.post('/engine/pause')

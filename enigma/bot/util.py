@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 
 class EnigmaClient(discord.Client):
     
