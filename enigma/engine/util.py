@@ -12,6 +12,7 @@ from engine.checks import Service
 from engine.settings import boxes_path, creds_path, injects_path
 from engine.models import InjectReport, SLAReport, ScoreReport, Settings
 from engine.models import TeamCredsTable, TeamTable, BoxTable, InjectTable, CredlistTable
+from engine import log
 
 ###################################################
 # Class Box
