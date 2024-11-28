@@ -1,4 +1,4 @@
-import random, json
+import random, json, tomllib
 import asyncio
 
 from fastapi import APIRouter, HTTPException
@@ -9,7 +9,7 @@ from engine.database import db_engine
 from engine.models import *
 from engine.settings import scores_path
 from engine.checks import Service
-from engine import is_running, is_scoring
+from engine import _enginelock
 
 engine_router = APIRouter(
     prefix='/engine',
@@ -19,10 +19,6 @@ engine_router = APIRouter(
 class ScoringEngine():
     
     def __init__(self):
-        self.delete_tables()
-
-        FileConfigLoader.load_all()
-
         # Initialize environment information
         with Session(db_engine) as session:
             self.name = session.exec(select(Settings)).one().comp_name
@@ -30,43 +26,55 @@ class ScoringEngine():
             self.services = Box.full_service_list(self.boxes)
             self.credlists = self.find_credlists()
             self.teams = self.find_teams()
-            self.injects = self.find_injects()
+            
+            self.check_time = session.exec(select(Settings)).one().check_time
+            self.check_jitter = session.exec(select(Settings)).one().check_jitter
+            self.check_timeout = session.exec(select(Settings)).one().check_timeout
+            self.check_points = session.exec(select(Settings)).one().check_points
+
+            self.sla_requirement = session.exec(select(Settings)).one().sla_requirement
+            self.sla_penalty = session.exec(select(Settings)).one().sla_penalty
 
             self.environment = session.exec(select(Settings)).one().first_octets
 
-            # Verify settings
-            if session.exec(select(Settings)).one().check_jitter >= session.exec(select(Settings)).one().check_time:
-                raise SystemExit(0)
-            if session.exec(select(Settings)).one().check_timeout >= session.exec(select(Settings)).one().check_time - session.exec(select(Settings)).one().check_jitter:
-                raise SystemExit(0)
+        # Verify settings
+        if self.check_jitter >= self.check_time:
+            raise SystemExit(0)
+        if self.check_timeout >= self.check_time - self.check_jitter:
+            raise SystemExit(0)
 
         # Starting from round 1
         self.round = 1
 
         # Setting pause and commands queue
         self.pause = False
+        self.stop = False
+
+        self.is_running = False
 
     async def run(self, total_rounds: int=0):
-        is_running = True
-        while self.round <= total_rounds or total_rounds == 0:
+        global _enginelock
+        _enginelock = True
+        self.is_running = True
+        while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
             print('round {}'.format(self.round))
+            if self.pause:
+                print('pausing scoring')
             while self.pause:
                 await asyncio.sleep(0.1)
-            #self.boxes = self.find_boxes()
-            #self.credlists = self.find_credlists()
-            #self.teams = self.find_teams()
-            #self.injects = self.find_injects()
+            print('starting scoring')
+            self.update_environment()
             is_scoring = True
             await self.score_services(self.round)
+            print('round {} done'.format(self.round))
             self.round = self.round + 1
-            with Session(db_engine) as session:
-                check_jitter = session.exec(select(Settings)).one().check_jitter
-                wait_time = session.exec(select(Settings)).one().check_time + random.randint(-check_jitter, check_jitter) 
-            print('round 1 done')
+            wait_time = self.check_time + random.randint(-self.check_jitter, self.check_jitter)
             is_scoring = False
             await asyncio.sleep(wait_time)
-        print('all done!')
-        is_running = False
+        print('stopping scoring')
+        self.is_running = False
+        self.stop = False
+        _enginelock = False
         self.export_all_as_csv()
 
     # Score check methods
@@ -170,12 +178,10 @@ class ScoringEngine():
                 tasks.append(asyncio.create_task(info['func'](info_morsel)))
 
         try:
-            with Session(db_engine) as session:
-                async for result in asyncio.as_completed(tasks, timeout=session.exec(select(Settings)).one().check_timeout):
-                    data = result.result()
-                    if data is not None:
-                        results.append(data)
-
+            async for result in asyncio.as_completed(tasks, timeout=self.check_timeout):
+                data = result.result()
+                if data is not None:
+                    results.append(data)
         except TimeoutError:
             for task in tasks:
                 if not task.done():
@@ -204,7 +210,7 @@ class ScoringEngine():
         for team_id, team in self.teams.items():
             team.export_scores_csv('{}_scores'.format(team.name), scores_path)
 
-    def find_boxes(self):
+    def find_boxes(self) -> list[Box]:
         boxes = list()
         with Session(db_engine) as session:
             db_boxes = session.exec(select(BoxTable)).all()
@@ -214,7 +220,7 @@ class ScoringEngine():
                 )
         return boxes
 
-    def find_credlists(self):
+    def find_credlists(self) -> list[Credlist]:
         credlists = list()
         with Session(db_engine) as session:
             db_credlists = session.exec(select(CredlistTable)).all()
@@ -227,7 +233,7 @@ class ScoringEngine():
             )
         return credlists
 
-    def find_teams(self):
+    def find_teams(self) -> dict[int: Team]:
         teams = dict()
         with Session(db_engine) as session:
             db_teams = session.exec(select(TeamTable)).all()
@@ -244,7 +250,7 @@ class ScoringEngine():
             })
         return teams
 
-    def find_injects(self):
+    def find_injects(self) -> list[Inject]:
         injects = list()
         with Session(db_engine) as session:
             db_injects = session.exec(select(InjectTable)).all()
@@ -253,10 +259,25 @@ class ScoringEngine():
                 Inject.new(db_inject.num, db_inject.config)
             )
         return injects
-    
-    # TODO
+
     def update_environment(self):
-        pass
+        with Session(db_engine) as session:
+            # Updating Boxes
+            db_boxes = session.exec(select(BoxTable)).all()
+            for db_box in db_boxes:
+                box_data = Box.new(db_box.name, tomllib.loads(db_box.config))
+                if not box_data in self.boxes:
+                    self.boxes.append(box_data)
+                else:
+                    for box in self.boxes:
+                        if box.name == box_data.name:
+                            self.boxes.remove(box)
+                            self.boxes.append(box_data)
+                            break
+        
+        # Updating services
+        self.services = Box.full_service_list(self.boxes)
+        
 
 
 

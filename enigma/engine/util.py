@@ -27,6 +27,13 @@ class Box():
     def __repr__(self):
         return '<{}> named \'{}\' with services {}'.format(type(self).__name__, self.name, self.services)
     
+    def __eq__(self, obj):
+        if isinstance(obj, Box):
+            if self.name == obj.name and self.identifier == obj.identifier:
+                if self.services == obj.services:
+                    return True
+        return False
+
     # Get every service for the box in the format 'box.service'
     def get_service_names(self):
         names = list()
@@ -74,6 +81,12 @@ class Credlist():
 
     def __repr__(self):
         return '<{}> named {} with creds {}'.format(type(self).__name__, self.name, self.creds)
+
+    def __eq__(self, obj):
+        if isinstance(obj, Credlist):
+            if self.name == obj.name and self.creds == obj.creds:
+                return True
+        return False
 
     @classmethod
     def new(cls, data: dict):
@@ -382,7 +395,6 @@ class Team():
 
     #######################
     # Creds methods
-
 
     # Returns a dict with all of the creds
     # Mostly used for debugging

@@ -24,6 +24,11 @@ class Service(ABC):
     def __repr__(self):
         pass
 
+    # Custom equivalence used for updating key environment details
+    @abstractmethod
+    def __eq__(self, obj):
+        pass
+
     # This method is perhaps most important. It conducts a service check and returns a boolean to represent the result
     # Note that conduct_service_check() will be called in a worker process, not the main thread
     # Implementations of conduct_service_check() must check kwargs for check info
@@ -54,6 +59,11 @@ class RandomService(Service):
     def __repr__(self):
         return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__, self.port)
 
+    def __eq__(self, obj):
+        if isinstance(obj, RandomService):
+            return True
+        return False
+
     async def conduct_service_check(self, data: dict):
         print('starting random check')
         await asyncio.sleep(random.randint(1,10))
@@ -75,7 +85,7 @@ class SSHService(Service):
 
     name = 'ssh'
 
-    def __init__(self, credlist: list[str], port: int, auth: list, keyfile: str):
+    def __init__(self, credlist: list[str], port: int, auth: list[str], keyfile: str):
         if not credlist:
             raise SystemExit(0)
         self.credlist = credlist
@@ -91,6 +101,17 @@ class SSHService(Service):
 
     def __repr__(self):
         return '<{}> with port {} and auth methods {}'.format(type(self).__name__, self.port, self.auth)
+    
+    def __eq__(self, obj):
+        if isinstance(obj, SSHService):
+            if (self.port == obj.port
+                and self.credlist == obj.credlist
+                and self.auth == obj.auth
+            ):
+                if hasattr(self, 'keyfile') and hasattr(obj, 'keyfile'):
+                    if self.keyfile == obj.keyfile:
+                        return True
+        return False
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
@@ -127,6 +148,16 @@ class HTTPService(Service):
 
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
+    
+    def __eq__(self, obj):
+        if isinstance(obj, HTTPService):
+            if self.port == obj.port:
+                if hasattr(self, 'path') and hasattr(obj, 'path'):
+                    if self.path == obj.path:
+                        return True
+                else:
+                    return True
+        return False
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
@@ -160,6 +191,16 @@ class HTTPSService(Service):
 
     def __repr__(self):
         return '<{}> with port {}'.format(type(self).__name__, self.port)
+    
+    def __eq__(self, obj):
+        if isinstance(obj, HTTPSService):
+            if self.port == obj.port:
+                if hasattr(self, 'path') and hasattr(obj, 'path'):
+                    if self.path == obj.path:
+                        return True
+                else:
+                    return True
+        return False
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
