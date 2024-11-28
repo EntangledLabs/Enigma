@@ -11,14 +11,17 @@ from engine.database import init_db, del_db
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
 from engine.settings import discord_api_key
+from engine import log
 
 from bot.util import EnigmaClient
 
 # Initialize the DB
+log.info('Initializing DB')
 del_db()
 init_db()
 
 # Load any config files
+log.info('Added any existing config files')
 FileConfigLoader.load_all()
 
 # Create the scoring engine

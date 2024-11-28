@@ -1,8 +1,6 @@
 from sqlmodel import SQLModel, Field, Session, Relationship
 from pydantic import BaseModel
-
 from fastapi import APIRouter, Depends
-
 from typing import List
 
 from engine import log

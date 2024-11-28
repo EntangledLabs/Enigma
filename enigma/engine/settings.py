@@ -1,9 +1,6 @@
 import tomllib
-from os import getenv
-
+from os import getenv, getcwd
 from dotenv import load_dotenv
-
-from os import getcwd
 
 load_dotenv()
 
