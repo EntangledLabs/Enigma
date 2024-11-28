@@ -38,9 +38,10 @@ async def bot_run():
 # Lifespan event for any tasks that run on start
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    
     asyncio.create_task(bot_run())
     yield
-    bot.close()
+    await bot.close()
 
 # Creating new FastAPI app
 app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', lifespan=lifespan)
