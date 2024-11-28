@@ -6,7 +6,9 @@ from sqlmodel import Session, select
 from engine.models import *
 from engine.settings import not_found_response
 from engine.database import db_engine
-from engine import is_running
+from engine import _enginelock
+
+obi_wan = HTTPException(status=400, detail='These aren\'t the rows you are looking for')
 
 # Environment routers
 box_router = APIRouter(
@@ -87,7 +89,7 @@ async def update_box(*, session: Session = Depends(get_session), box_name: str, 
         data = tomllib.loads(db_box.config)
         identifier = data['identifier']
     except:
-        raise HTTPException(status=400, detail='Box config is not correct!')
+        raise obi_wan
     session.add(db_box)
     session.commit()
     session.refresh(db_box)
@@ -106,6 +108,9 @@ async def delete_box(*, session: Session = Depends(get_session), box_name: str):
 # Credlist routes
 @creds_router.post('/', response_model=CredlistPublic)
 async def add_credlist(*, session: Session = Depends(get_session), credlist: CredlistCreate):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot add credlists during the competition')
     db_credlist = CredlistTable.model_validate(credlist)
     session.add(db_credlist)
     session.commit()
@@ -126,6 +131,9 @@ async def get_credlist(*, session: Session = Depends(get_session), creds_name: s
 
 @creds_router.put('/{creds_name}', response_model=CredlistPublic)
 async def update_credlist(*, session: Session = Depends(get_session), creds_name: str, credlist: CredlistUpdate):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot update credlists during the competition')
     db_credlist = session.exec(select(CredlistTable).where(CredlistTable.name == creds_name)).one()
     if not db_credlist:
         raise HTTPException(status_code=404, detail='Credlist not found')
@@ -134,7 +142,7 @@ async def update_credlist(*, session: Session = Depends(get_session), creds_name
     try:
         json.loads(db_credlist.creds)
     except:
-        raise HTTPException(status=400, detail='Credlist config is not correct!')
+        raise obi_wan
     session.add(db_credlist)
     session.commit()
     session.refresh(db_credlist)
@@ -142,6 +150,9 @@ async def update_credlist(*, session: Session = Depends(get_session), creds_name
 
 @creds_router.delete('/{creds_name}')
 async def delete_credlist(*, session: Session = Depends(get_session), creds_name: str):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot remove credlists during the competition')
     credlist = session.exec(select(CredlistTable).where(CredlistTable.name == creds_name)).one()
     if not credlist:
         raise HTTPException(status_code=404, detail='Credlist not found')
@@ -185,7 +196,7 @@ async def update_inject(*, session: Session = Depends(get_session), inject_name:
         worth = data['worth']
         rubric = data['rubric']
     except:
-        raise HTTPException(status=400, detail='Inject config is not correct!')
+        raise obi_wan
     session.add(db_inject)
     session.commit()
     session.refresh(db_inject)
@@ -203,8 +214,9 @@ async def delete_inject(*, session: Session = Depends(get_session), inject_name:
 # Team routes
 @team_router.post('/', response_model=TeamPublic)
 async def add_team(*, session: Session = Depends(get_session), team: TeamCreate):
-    if is_running:
-        return HTTPException(status_code=423, detail='Enigma is running! Cannot add teams during the competition')
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot add teams during the competition')
     db_team = TeamTable.model_validate(team)
     session.add(db_team)
     session.commit()
@@ -220,14 +232,17 @@ async def list_teams(*, session: Session = Depends(get_session), offset: int=0, 
 async def get_team(*, session: Session = Depends(get_session), team_id: int):
     team = session.exec(select(TeamTable).where(TeamTable.identifier == team_id)).one()
     if team is None:
-        return HTTPException(status_code=404, detail='Team not found')
+        raise HTTPException(status_code=404, detail='Team not found')
     return team
 
 @team_router.put('/{team_id}', response_model=TeamPublic)
 async def update_team(*, session: Session = Depends(get_session), team_id: int, team: TeamUpdate):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot modify teams during the competition')
     db_team = session.exec(select(TeamTable).where(TeamTable.identifier == team_id)).one()
     if db_team is None:
-        return HTTPException(status_code=404, detail='Team not found')
+        raise HTTPException(status_code=404, detail='Team not found')
     team_data = team.model_dump(exclude_unset=True)
     db_team.sqlmodel_update(team_data)
     session.add(db_team)
@@ -237,9 +252,12 @@ async def update_team(*, session: Session = Depends(get_session), team_id: int, 
 
 @team_router.delete('/{team_id}')
 async def delete_team(*, session: Session = Depends(get_session), team_id: int):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot delete teams during the competition')
     team = session.exec(select(TeamTable).where(TeamTable.identifier == team_id)).one()
     if team is None:
-        return HTTPException(status_code=404, detail='Team not found')
+        raise HTTPException(status_code=404, detail='Team not found')
     session.delete(team)
     session.commit()
     return {'ok': True}
@@ -269,7 +287,7 @@ async def update_teamcreds(*, session: Session = Depends(get_session), team_id: 
     try:
         json.loads(db_teamcreds.creds)
     except:
-        raise HTTPException(status=400, detail='TeamCreds config is not correct!')
+        raise obi_wan
     session.add(db_teamcreds)
     session.commit()
     session.refresh(db_teamcreds)
@@ -314,7 +332,7 @@ async def update_inject_report(*, session: Session = Depends(get_session), injec
     try:
         json.loads(db_inject_report.breakdown)
     except:
-        raise HTTPException(status=400, detail='InjectReport config is not correct!')
+        raise obi_wan
     session.add(db_inject_report)
     session.commit()
     session.refresh(db_inject_report)
@@ -355,6 +373,9 @@ async def get_settings(*, session: Session = Depends(get_session)):
 
 @settings_router.put('/', response_model=SettingsPublic)
 async def update_settings(*, session: Session = Depends(get_session), settings: SettingsUpdate):
+    global _enginelock
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is running! Cannot modify settings during the competition')
     settings = session.exec(select(ScoreReport)).one()
     settings_data = settings.model_dump(exclude_unset=True)
     settings.sqlmodel_update(settings_data)

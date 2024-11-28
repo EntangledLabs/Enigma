@@ -1,4 +1,4 @@
-import random, json
+import random, json, tomllib
 import asyncio
 
 from fastapi import APIRouter, HTTPException
@@ -9,6 +9,7 @@ from engine.database import db_engine
 from engine.models import *
 from engine.settings import scores_path
 from engine.checks import Service
+from engine import _enginelock
 
 engine_router = APIRouter(
     prefix='/engine',
@@ -52,6 +53,8 @@ class ScoringEngine():
         self.is_running = False
 
     async def run(self, total_rounds: int=0):
+        global _enginelock
+        _enginelock = True
         self.is_running = True
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
             print('round {}'.format(self.round))
@@ -71,6 +74,7 @@ class ScoringEngine():
         print('stopping scoring')
         self.is_running = False
         self.stop = False
+        _enginelock = False
         self.export_all_as_csv()
 
     # Score check methods
@@ -206,7 +210,7 @@ class ScoringEngine():
         for team_id, team in self.teams.items():
             team.export_scores_csv('{}_scores'.format(team.name), scores_path)
 
-    def find_boxes(self):
+    def find_boxes(self) -> list[Box]:
         boxes = list()
         with Session(db_engine) as session:
             db_boxes = session.exec(select(BoxTable)).all()
@@ -216,7 +220,7 @@ class ScoringEngine():
                 )
         return boxes
 
-    def find_credlists(self):
+    def find_credlists(self) -> list[Credlist]:
         credlists = list()
         with Session(db_engine) as session:
             db_credlists = session.exec(select(CredlistTable)).all()
@@ -229,7 +233,7 @@ class ScoringEngine():
             )
         return credlists
 
-    def find_teams(self):
+    def find_teams(self) -> dict[int: Team]:
         teams = dict()
         with Session(db_engine) as session:
             db_teams = session.exec(select(TeamTable)).all()
@@ -246,7 +250,7 @@ class ScoringEngine():
             })
         return teams
 
-    def find_injects(self):
+    def find_injects(self) -> list[Inject]:
         injects = list()
         with Session(db_engine) as session:
             db_injects = session.exec(select(InjectTable)).all()
@@ -255,22 +259,25 @@ class ScoringEngine():
                 Inject.new(db_inject.num, db_inject.config)
             )
         return injects
-    
-    # TODO
-    def update_environment(self):
-        return
-        self.boxes = self.find_boxes()
-        self.services = Box.full_service_list(self.boxes)
-        self.credlists = self.find_credlists()
-        self.teams = self.find_teams()
-        
-        self.check_time = session.exec(select(Settings)).one().check_time
-        self.check_jitter = session.exec(select(Settings)).one().check_jitter
-        self.check_timeout = session.exec(select(Settings)).one().check_timeout
-        self.check_points = session.exec(select(Settings)).one().check_points
 
-        self.sla_requirement = session.exec(select(Settings)).one().sla_requirement
-        self.sla_penalty = session.exec(select(Settings)).one().sla_penalty
+    def update_environment(self):
+        with Session(db_engine) as session:
+            # Updating Boxes
+            db_boxes = session.exec(select(BoxTable)).all()
+            for db_box in db_boxes:
+                box_data = Box.new(db_box.name, tomllib.loads(db_box.config))
+                if not box_data in self.boxes:
+                    self.boxes.append(box_data)
+                else:
+                    for box in self.boxes:
+                        if box.name == box_data.name:
+                            self.boxes.remove(box)
+                            self.boxes.append(box_data)
+                            break
+        
+        # Updating services
+        self.services = Box.full_service_list(self.boxes)
+        
 
 
 
