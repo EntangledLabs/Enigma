@@ -7,7 +7,7 @@ class SettingsBase(SQLModel):
     pcr_portal: bool = Field(default=True)
     inject_portal: bool = Field(default=True)
     comp_name: str = Field(default='example')
-    check_time: int = Field(default=30, ge=15)
+    check_time: int = Field(default=30)
     check_jitter: int = Field(default=0, ge=0)
     check_timeout: int = Field(default=5, ge=5)
     check_points: int = Field(default=10, ge=1)

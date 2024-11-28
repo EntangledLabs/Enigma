@@ -25,7 +25,6 @@ class ScoringEngine():
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
             self.credlists = self.find_credlists()
-            self.teams = self.find_teams()
             
             self.check_time = session.exec(select(Settings)).one().check_time
             self.check_jitter = session.exec(select(Settings)).one().check_jitter
@@ -55,6 +54,9 @@ class ScoringEngine():
     async def run(self, total_rounds: int=0):
         global _enginelock
         _enginelock = True
+        self.teams = self.find_teams()
+        if len(self.teams) == 0:
+            return False
         self.is_running = True
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
             print('round {}'.format(self.round))
@@ -63,7 +65,8 @@ class ScoringEngine():
             while self.pause:
                 await asyncio.sleep(0.1)
             print('starting scoring')
-            self.update_environment()
+            self.boxes = self.find_boxes()
+            self.services = Box.full_service_list(self.boxes)
             is_scoring = True
             await self.score_services(self.round)
             print('round {} done'.format(self.round))
@@ -189,9 +192,6 @@ class ScoringEngine():
         
         return results
     
-    async def score_check_task(self):
-        pass
-
     # Deletes all records except for team records
     def delete_tables(self):
         with Session(db_engine) as session:
@@ -259,29 +259,7 @@ class ScoringEngine():
                 Inject.new(db_inject.num, db_inject.config)
             )
         return injects
-
-    def update_environment(self):
-        with Session(db_engine) as session:
-            # Updating Boxes
-            db_boxes = session.exec(select(BoxTable)).all()
-            for db_box in db_boxes:
-                box_data = Box.new(db_box.name, tomllib.loads(db_box.config))
-                if not box_data in self.boxes:
-                    self.boxes.append(box_data)
-                else:
-                    for box in self.boxes:
-                        if box.name == box_data.name:
-                            self.boxes.remove(box)
-                            self.boxes.append(box_data)
-                            break
-        
-        # Updating services
-        self.services = Box.full_service_list(self.boxes)
-        
-
-
-
-    
+  
 class TestScoringEngine(ScoringEngine):
     
     def __init__(self, test_users: int, user_fmt: str):

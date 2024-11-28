@@ -8,7 +8,7 @@ from engine.settings import not_found_response
 from engine.database import db_engine
 from engine import _enginelock
 
-obi_wan = HTTPException(status=400, detail='These aren\'t the rows you are looking for')
+obi_wan = HTTPException(status_code=400, detail='These aren\'t the rows you are looking for')
 
 # Environment routers
 box_router = APIRouter(
@@ -368,7 +368,7 @@ async def get_latest_score_report(*, session: Session = Depends(get_session), te
 # Settings routes
 @settings_router.get('/', response_model=SettingsPublic)
 async def get_settings(*, session: Session = Depends(get_session)):
-    settings = session.exec(select(ScoreReport)).one()
+    settings = session.exec(select(Settings)).one()
     return settings
 
 @settings_router.put('/', response_model=SettingsPublic)
@@ -376,7 +376,7 @@ async def update_settings(*, session: Session = Depends(get_session), settings: 
     global _enginelock
     if _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is running! Cannot modify settings during the competition')
-    settings = session.exec(select(ScoreReport)).one()
+    settings = session.exec(select(Settings)).one()
     settings_data = settings.model_dump(exclude_unset=True)
     settings.sqlmodel_update(settings_data)
     session.add(settings)

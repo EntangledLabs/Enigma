@@ -1,11 +1,12 @@
 import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 import uvicorn
 
 from engine.routes import box_router, creds_router, injects_router, team_router, sla_report_router, inject_report_router, score_report_router, settings_router
 from engine.database import init_db, del_db
-from engine.scoring import ScoringEngine, TestScoringEngine
+from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
 
 # Initialize the DB
@@ -16,10 +17,15 @@ init_db()
 FileConfigLoader.load_all()
 
 # Create the scoring engine
-se = TestScoringEngine(5, 'Team{}')
+se = ScoringEngine()
+
+# Lifespan event for any tasks that run on start
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
 
 # Creating new FastAPI app
-app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled')
+app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', lifespan=lifespan)
 
 app.include_router(settings_router)
 
@@ -39,7 +45,12 @@ app.include_router(score_report_router)
 async def start_scoring():
     if se.is_running:
         raise HTTPException(status_code=423, detail='Enigma is already running!')
-    asyncio.create_task(se.run())
+    run_engine = [asyncio.create_task(se.run())]
+    try:
+        async for result in asyncio.as_completed(run_engine, timeout=3):
+            pass
+    except Exception:
+        raise HTTPException(status_code=503, detail='Enigma could not be started for some reason')
     return {'ok': True}
 
 @app.post('/engine/pause')
