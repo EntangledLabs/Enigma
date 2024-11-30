@@ -10,6 +10,8 @@ Parable allows a competitor end user to view a wide variety of information relev
 
 Future feature! Enigma will have Discord integration and will automatically manage channels and roles. Competitors will be able to submit various requests through Discord to supplement their use of Parable.
 
+[Link to Discord bot](https://discord.com/oauth2/authorize?client_id=1311244971348725780&permissions=8&integration_type=0&scope=bot)
+
 ## Details
 Built on Python 3.13.0 with Django and FastAPI
 
@@ -23,7 +25,7 @@ The following table lists the ports of each service:
 |---|---|
 |Enigma|4731|
 |Parable|5070|
-|PostgreSQL|8721|
+|PostgreSQL|8721/3141|
 |Nginx|80,443|
 
 Nginx should be the only service exposed

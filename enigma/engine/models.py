@@ -1,4 +1,45 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Session, Relationship
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends
+from typing import List
+
+from engine import log
+
+sla_report_router = APIRouter(
+    prefix='/sla-reports',
+    tags=['sla-reports'],
+    responses={404: {'description': 'Not Found'}}
+)
+inject_report_router = APIRouter(
+    prefix='/inject-reports',
+    tags=['inject-reports'],
+    responses={404: {'description': 'Not Found'}}
+)
+score_report_router = APIRouter(
+    prefix='/score-reports',
+    tags=['score-reports'],
+    responses={404: {'description': 'Not Found'}}
+)
+box_router = APIRouter(
+    prefix='/boxes',
+    tags=['boxes'],
+    responses={404: {'description': 'Not Found'}}
+)
+team_router = APIRouter(
+    prefix='/teams',
+    tags=['teams'],
+    responses={404: {'description': 'Not Found'}}
+)
+creds_router = APIRouter(
+    prefix='/creds',
+    tags=['creds'],
+    responses={404: {'description': 'Not Found'}}
+)
+injects_router = APIRouter(
+    prefix='/injects',
+    tags=['injects'],
+    responses={404: {'description': 'Not Found'}}
+)
 
 # Misc
 # API only exposes RU

@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 import uvicorn
@@ -8,24 +7,21 @@ from engine.routes import box_router, creds_router, injects_router, team_router,
 from engine.database import init_db, del_db
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
+from engine.settings import log_config
+from engine import log, _enginelock
 
 # Initialize the DB
+log.info('Initializing DB')
 del_db()
 init_db()
 
-# Load any config files
-FileConfigLoader.load_all()
-
 # Create the scoring engine
+FileConfigLoader.load_settings()
 se = ScoringEngine()
 
-# Lifespan event for any tasks that run on start
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-
 # Creating new FastAPI app
-app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', lifespan=lifespan)
+log.info('Initializing Enigma')
+app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled')
 
 app.include_router(settings_router)
 
@@ -43,46 +39,58 @@ app.include_router(score_report_router)
 # Adding engine run commands
 @app.post('/engine/start')
 async def start_scoring():
-    if se.is_running:
+    if not se.teams_detected:
+        raise HTTPException(status_code=423, detail='No teams detected, cannot start Enigma')
+    if _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is already running!')
-    run_engine = [asyncio.create_task(se.run())]
-    try:
-        async for result in asyncio.as_completed(run_engine, timeout=3):
-            pass
-    except Exception:
-        raise HTTPException(status_code=503, detail='Enigma could not be started for some reason')
+    log.info('Starting Enigma scoring')
+    asyncio.create_task(se.run())
+    return {'ok': True}
+
+@app.post('/engine/update')
+async def update_teams():
+    if _enginelock:
+        raise HTTPException(status_code=423, detail='Cannot update teams, Enigma is running')
+    log.info('Updating teams in Enigma')
+    se.teams = se.find_teams()
     return {'ok': True}
 
 @app.post('/engine/pause')
 async def pause_scoring():
-    if se.pause or not se.is_running:
-        raise HTTPException(status_code=423, detail='Enigma is already paused!!')
+    if se.pause or not _enginelock:
+        raise HTTPException(status_code=423, detail='Enigma is already paused!')
+    log.info('Pausing Enigma scoring')
     se.pause = True
     return {'ok': True}
 
 @app.post('/engine/unpause')
 async def unpause_scoring():
-    if not se.pause or not se.is_running:
+    if not se.pause or not _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is already unpaused!')
+    log.info('Unpausing Enigma scoring')
     se.pause = False
     return {'ok': True}
 
 @app.post('/engine/stop')
 async def stop_scoring():
-    if not se.is_running:
+    if not _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is not running!')
+    log.info('Stopping Enigma scoring')
     se.stop = True
     return {'ok': True}
 
 @app.get('/engine')
 async def get_scoring_state():
-    return {'running': se.is_running, 'paused': se.pause}
+    return {'running': _enginelock, 'paused': se.pause}
+
+@app.get('/')
+async def read_root():
+    return {'ok': True}
 
 if __name__ == '__main__':
     uvicorn.run(
         'main:app',
         host='0.0.0.0',
         port=4731,
-        log_level='info',
-        reload=False
+        log_config=log_config
     )

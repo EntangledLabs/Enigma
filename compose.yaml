@@ -1,23 +1,39 @@
 services:
   enigma:
+    container_name: 'enigma'
     build: ./enigma
+    ports:
+      - "4731:4731"
+    env_file:
+      - ".env"
+    environment:
+      DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
+    volumes:
+      - ./logs:/enigma_engine/logs:rw
+    networks:
+      - backend
+      - frontend
     depends_on:
-      proxy:
+      db-enigma:
         condition: service_healthy
-        restart: true
-      db:
-        condition: service_healthy
-        restart: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4731"]
 
-  parable:
-    build: ./parable
-    depends_on:
-      enigma:
-        condition: service_healthy
-        restart: true
+
+  #parable:
+    #build: ./parable
+    #depends_on:
+      #enigma:
+        #condition: service_healthy
+        #restart: true
 
   proxy:
+    container_name: parable-proxy
     image: 'nginx:stable-alpine'
+    ports:
+      - "80:80"
+    networks:
+      - frontend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
       interval: 1m30s
@@ -26,11 +42,31 @@ services:
       start_period: 40s
       start_interval: 5s
 
-  db:
+  db-enigma:
+    container_name: 'enigma-postgres'
     image: 'postgres:alpine'
+    restart: always
+    env_file:
+      - ".env"
+    environment:
+      POSTGRES_USER: enigma
+      POSTGRES_DB: enigma
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", 'pg_isready -U enigma']
       interval: 10s
       retries: 5
-      start_period: 30s
-      timeout: 10s
+      timeout: 5s
+
+networks:
+  backend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: "nat"
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
+  frontend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"

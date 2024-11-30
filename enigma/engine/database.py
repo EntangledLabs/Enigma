@@ -1,9 +1,11 @@
 from sqlmodel import create_engine, SQLModel, Session
 
 from engine.settings import db_url
+from engine import log
 
-connect_args = {"check_same_thread": False}
-db_engine = create_engine(db_url, echo=False, connect_args=connect_args)
+print(db_url)
+
+db_engine = create_engine(db_url, echo=False)
 
 def init_db():
     import engine.models
