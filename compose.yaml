@@ -1,6 +1,7 @@
 services:
   enigma:
     container_name: 'enigma'
+    image: enigma:latest
     build: ./enigma
     ports:
       - "4731:4731"
