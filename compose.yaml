@@ -18,9 +18,6 @@ services:
     depends_on:
       db-enigma:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4731"]
-
 
   #parable:
     #build: ./parable
@@ -28,6 +25,15 @@ services:
       #enigma:
         #condition: service_healthy
         #restart: true
+
+  discord-bot:
+    container_name: enigma_bot
+    build: ./enigma_bot
+    env_file:
+      - ".env"
+    depends_on:
+      enigma:
+        condition: service_started
 
   proxy:
     container_name: parable-proxy

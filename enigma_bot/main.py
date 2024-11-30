@@ -1,14 +1,17 @@
+from os import getenv
+
 import discord
 from dotenv import load_dotenv
 
 from bot.util import EnigmaClient
 
+load_dotenv(override=True)
+
 # Create the discord bot
 bot = EnigmaClient()
 
-# Discord bot run method
-async def bot_run():
+if __name__ == '__main__':
     try:
-        await bot.start(discord_api_key)
+        bot.run(getenv("DISCORD_API_KEY"))
     except KeyboardInterrupt:
-        await bot.close()
+        bot.close()
