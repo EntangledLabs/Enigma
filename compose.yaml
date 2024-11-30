@@ -26,29 +26,29 @@ services:
         #condition: service_healthy
         #restart: true
 
-  discord-bot:
-    container_name: enigma_bot
-    build: ./enigma_bot
-    env_file:
-      - ".env"
-    depends_on:
-      enigma:
-        condition: service_started
+  #discord-bot:
+    #container_name: enigma_bot
+    #build: ./enigma_bot
+    #env_file:
+    #  - ".env"
+    #depends_on:
+    #  enigma:
+    #    condition: service_started
 
-  proxy:
-    container_name: parable-proxy
-    image: 'nginx:stable-alpine'
-    ports:
-      - "80:80"
-    networks:
-      - frontend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-      start_interval: 5s
+  #proxy:
+  #  container_name: parable-proxy
+  #  image: 'nginx:stable-alpine'
+  #  ports:
+  #    - "80:80"
+  #  networks:
+  #    - frontend
+  #  healthcheck:
+  #    test: ["CMD", "curl", "-f", "http://localhost"]
+  #    interval: 1m30s
+  #    timeout: 10s
+  #    retries: 3
+  #    start_period: 40s
+  #    start_interval: 5s
 
   db-enigma:
     container_name: 'enigma-postgres'
@@ -70,11 +70,5 @@ services:
 networks:
   backend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.gateway_mode_ipv4: "nat"
-      com.docker.network.bridge.enable_icc: "true"
-      com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
   frontend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.enable_icc: "true"
