@@ -25,7 +25,7 @@ The following table lists the ports of each service:
 |---|---|
 |Enigma|4731|
 |Parable|5070|
-|PostgreSQL|8721|
+|PostgreSQL|8721/3141|
 |Nginx|80,443|
 
 Nginx should be the only service exposed

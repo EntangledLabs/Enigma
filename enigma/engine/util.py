@@ -9,10 +9,8 @@ import tomli_w
 
 from engine.database import db_engine
 from engine.checks import Service
-from engine.settings import boxes_path, creds_path, injects_path
 from engine.models import InjectReport, SLAReport, ScoreReport, Settings
 from engine.models import TeamCredsTable, TeamTable, BoxTable, InjectTable, CredlistTable
-from engine import log
 
 ###################################################
 # Class Box
@@ -444,29 +442,6 @@ class Team():
         }
         return choice
 
-    # Performs a password change request
-    # Parameter new_creds is a 2D dict, where the first key is the credlist name and the second is the user
-    def pcr(self, new_creds: dict) -> None:
-        with Session(db_engine) as session:
-            for credlist, creds in new_creds.items():
-                old_creds = session.exec(
-                    select(TeamCredsTable).where(
-                        TeamCredsTable.name == credlist
-                    ).where(
-                        TeamCredsTable.team_id == self.identifier
-                    )
-                ).one()
-                mod_creds = json.loads(old_creds.creds)
-                for user in creds.keys():
-                    if user not in mod_creds:
-                        continue
-                    else:
-                        mod_creds.update({
-                            user: creds.get(user)
-                        })
-                old_creds.creds = json.dumps(mod_creds)
-                session.commit()
-
     # Creates a new Team from the config info
     @classmethod
     def new(cls, services: list[str], data: dict):
@@ -506,7 +481,7 @@ class FileConfigLoader():
             )
             session.commit()
 
-    @classmethod
+    """@classmethod
     def load_boxes(cls):
         box_files = [f for f in listdir(boxes_path) 
                      if isfile(join(boxes_path, f)) 
@@ -522,10 +497,10 @@ class FileConfigLoader():
                             config=tomli_w.dumps(data)
                         )
                     )
-                    session.commit()
+                    session.commit()"""
         
 
-    @classmethod
+    """@classmethod
     def load_creds(cls):
         cred_files = [f for f in listdir(creds_path) 
                      if isfile(join(creds_path, f)) 
@@ -543,9 +518,9 @@ class FileConfigLoader():
                             creds=json.dumps(creds)
                         )
                     )
-                    session.commit()
+                    session.commit()"""
 
-    @classmethod
+    """@classmethod
     def load_injects(cls):
         inject_files = [f for f in listdir(injects_path) 
                        if isfile(join(injects_path, f)) 
@@ -561,11 +536,12 @@ class FileConfigLoader():
                             config=tomli_w.dumps(data)
                         )
                     )
-                    session.commit()
+                    session.commit()"""
 
-    @classmethod
+    """@classmethod
     def load_all(cls):
         cls.load_settings()
-        cls.load_boxes()
-        cls.load_creds()
-        cls.load_injects()
+        #cls.load_boxes()
+        #cls.load_creds()
+        #cls.load_injects()
+        log.info('Added any existing config files')"""

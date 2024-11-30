@@ -1,13 +1,12 @@
-import random, json, tomllib
+import random, json
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from sqlmodel import Session, select, delete
 
-from engine.util import Box, Inject, Team, Credlist, FileConfigLoader
+from engine.util import Box, Inject, Team, Credlist
 from engine.database import db_engine
 from engine.models import *
-from engine.settings import scores_path
 from engine.checks import Service
 from engine import log, _enginelock
 
@@ -22,8 +21,6 @@ class ScoringEngine():
         # Setting flags
         self.pause = False
         self.stop = False
-
-        self.is_running = False
         self.teams_detected = False
 
         # Initialize environment information
@@ -32,7 +29,8 @@ class ScoringEngine():
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
             self.credlists = self.find_credlists()
-            
+            self.teams = self.find_teams()
+
             self.check_time = session.exec(select(Settings)).one().check_time
             self.check_jitter = session.exec(select(Settings)).one().check_jitter
             self.check_timeout = session.exec(select(Settings)).one().check_timeout
@@ -55,31 +53,28 @@ class ScoringEngine():
     async def run(self, total_rounds: int=0):
         global _enginelock
         _enginelock = True
-        self.teams = self.find_teams()
-        if len(self.teams) == 0:
-            return False
-        self.is_running = True
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
-            print('round {}'.format(self.round))
+            log.info('Round {}'.format(self.round))
             if self.pause:
-                print('pausing scoring')
+                log.info('Pausing scoring')
             while self.pause:
                 await asyncio.sleep(0.1)
-            print('starting scoring')
+            log.info('Starting scoring')
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
+            self.conduct_pcrs()
             is_scoring = True
             await self.score_services(self.round)
-            print('round {} done'.format(self.round))
+            log.info('Round {} done! Waiting for next round start...'.format(self.round))
             self.round = self.round + 1
             wait_time = self.check_time + random.randint(-self.check_jitter, self.check_jitter)
             is_scoring = False
             await asyncio.sleep(wait_time)
-        print('stopping scoring')
-        self.is_running = False
+        log.info('Stopping scoring!')
         self.stop = False
         _enginelock = False
-        self.export_all_as_csv()
+        log.info('Exporting CSVs with competitor data')
+        #self.export_all_as_csv()
 
     # Score check methods
 
@@ -174,6 +169,7 @@ class ScoringEngine():
             })
         return data
     
+    # Aync method to run score checks, allowing Enigma to focus on fulfilling API requests in the meantime
     async def run_score_checks(self, check_data: dict, teams: dict[Team], services: list[str]):
         results = []
         tasks = []
@@ -192,24 +188,12 @@ class ScoringEngine():
                     task.cancel()
         
         return results
-    
-    # Deletes all records except for team records
-    def delete_tables(self):
-        with Session(db_engine) as session:
-            session.exec(delete(TeamCredsTable))
-            session.exec(delete(SLAReport))
-            session.exec(delete(ScoreReport))
-            session.exec(delete(InjectReport))
-            session.exec(delete(InjectTable))
-            session.exec(delete(CredlistTable))
-            session.exec(delete(BoxTable))
-            session.commit()
 
     # Find/create methods for relevant competition data
 
-    def export_all_as_csv(self):
+    """def export_all_as_csv(self):
         for team_id, team in self.teams.items():
-            team.export_scores_csv('{}_scores'.format(team.name), scores_path)
+            team.export_scores_csv('{}_scores'.format(team.name), scores_path)"""
 
     def find_boxes(self) -> list[Box]:
         boxes = list()

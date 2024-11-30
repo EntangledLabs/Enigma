@@ -119,7 +119,8 @@ class SSHService(Service):
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        print('starting ssh check')
+        log.warning('Check is not fully implemented! Results are random')
+        log.info('Conducting ssh service check')
         await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
@@ -165,7 +166,8 @@ class HTTPService(Service):
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        print('starting http check')
+        log.warning('Check is not fully implemented! Results are random')
+        log.info('Conducting http service check')
         await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
@@ -208,7 +210,8 @@ class HTTPSService(Service):
 
     async def conduct_service_check(self, data: dict):
         # TODO: make it not random
-        print('starting https check')
+        log.warning('Check is not fully implemented! Results are random')
+        log.info('Conducting https service check')
         await asyncio.sleep(random.randint(1,10))
         result = random.choice([True, False])
         if result:
