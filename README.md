@@ -8,7 +8,7 @@ Enigma is designed to be highly configurable and extensible. Custom score checks
 
 Parable allows a competitor end user to view a wide variety of information relevant to their performance. In addition, Parable includes a comprehensive administration panel with the capability to modify almost every aspect of Enigma.
 
-Future feature! Enigma will have Discord integration and will automatically manage channels and roles. Competitors will be able to submit various requests through Discord to supplement their use of Parable.
+Enigma has Discord integration and will automatically manage channels and roles. Competitors will be able to submit various requests through Discord to supplement their use of Parable, such as green team support and box reset requests.
 
 [Link to Discord bot](https://discord.com/oauth2/authorize?client_id=1311244971348725780&permissions=8&integration_type=0&scope=bot)
 
