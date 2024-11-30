@@ -19,6 +19,13 @@ engine_router = APIRouter(
 class ScoringEngine():
     
     def __init__(self):
+        # Setting flags
+        self.pause = False
+        self.stop = False
+
+        self.is_running = False
+        self.teams_detected = False
+
         # Initialize environment information
         with Session(db_engine) as session:
             self.name = session.exec(select(Settings)).one().comp_name
@@ -44,12 +51,6 @@ class ScoringEngine():
 
         # Starting from round 1
         self.round = 1
-
-        # Setting pause and commands queue
-        self.pause = False
-        self.stop = False
-
-        self.is_running = False
 
     async def run(self, total_rounds: int=0):
         global _enginelock
@@ -248,6 +249,7 @@ class ScoringEngine():
                     }
                 )
             })
+        self.teams_detected = True if len(teams) != 0 else False
         return teams
 
     def find_injects(self) -> list[Inject]:

@@ -10,7 +10,7 @@ from engine.routes import box_router, creds_router, injects_router, team_router,
 from engine.database import init_db, del_db
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
-from engine.settings import discord_api_key
+from engine.settings import discord_api_key, log_config
 from engine import log
 
 from bot.util import EnigmaClient
@@ -65,15 +65,24 @@ app.include_router(score_report_router)
 # Adding engine run commands
 @app.post('/engine/start')
 async def start_scoring():
+    if not se.teams_detected:
+        raise HTTPException(status_code=423, detail='No teams detected, cannot start Enigma')
     if se.is_running:
         raise HTTPException(status_code=423, detail='Enigma is already running!')
     run_engine = asyncio.create_task(se.run())
     return {'ok': True}
 
+@app.post('/engine/update')
+async def update_teams():
+    if se.is_running:
+        raise HTTPException(status_code=423, detail='Cannot update teams, Enigma is running')
+    se.teams = se.find_teams()
+    return {'ok': True}
+
 @app.post('/engine/pause')
 async def pause_scoring():
     if se.pause or not se.is_running:
-        raise HTTPException(status_code=423, detail='Enigma is already paused!!')
+        raise HTTPException(status_code=423, detail='Enigma is already paused!')
     se.pause = True
     return {'ok': True}
 
@@ -100,6 +109,5 @@ if __name__ == '__main__':
         'main:app',
         host='0.0.0.0',
         port=4731,
-        log_level='info',
-        reload=False
+        log_config=log_config
     )
