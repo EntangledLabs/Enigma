@@ -13,7 +13,7 @@ from engine import log, _enginelock
 
 # Initialize the DB
 log.info('Initializing DB')
-del_db()
+#del_db()
 init_db()
 
 # Create the scoring engine
