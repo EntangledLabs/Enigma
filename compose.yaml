@@ -35,7 +35,7 @@ services:
         #restart: true
 
   discord:
-    container_name: enigma-bot
+    container_name: enigma-discord
     image: enigma_bot:latest
     build: ./enigma_bot
     env_file:
