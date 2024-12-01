@@ -39,7 +39,7 @@ app.include_router(inject_report_router, prefix=f'/api/{api_version}', dependenc
 app.include_router(score_report_router, prefix=f'/api/{api_version}', dependencies=[Depends(api_key_auth)])
 
 # Adding engine run commands
-@app.post(f'/api/{api_version}/engine/start', dependencies=[Depends(api_key_auth)])
+@app.post(f'/api/{api_version}/engine/start', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def start_scoring():
     if not se.teams_detected:
         raise HTTPException(status_code=423, detail='No teams detected, cannot start Enigma')
@@ -49,7 +49,7 @@ async def start_scoring():
     asyncio.create_task(se.run())
     return {'ok': True}
 
-@app.post(f'/api/{api_version}/engine/update', dependencies=[Depends(api_key_auth)])
+@app.post(f'/api/{api_version}/engine/update', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def update_teams():
     if _enginelock:
         raise HTTPException(status_code=423, detail='Cannot update teams, Enigma is running')
@@ -57,7 +57,7 @@ async def update_teams():
     se.teams = se.find_teams()
     return {'ok': True}
 
-@app.post(f'/api/{api_version}/engine/pause', dependencies=[Depends(api_key_auth)])
+@app.post(f'/api/{api_version}/engine/pause', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def pause_scoring():
     if se.pause or not _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is already paused!')
@@ -65,7 +65,7 @@ async def pause_scoring():
     se.pause = True
     return {'ok': True}
 
-@app.post(f'/api/{api_version}/engine/unpause', dependencies=[Depends(api_key_auth)])
+@app.post(f'/api/{api_version}/engine/unpause', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def unpause_scoring():
     if not se.pause or not _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is already unpaused!')
@@ -73,7 +73,7 @@ async def unpause_scoring():
     se.pause = False
     return {'ok': True}
 
-@app.post(f'/api/{api_version}/engine/stop', dependencies=[Depends(api_key_auth)])
+@app.post(f'/api/{api_version}/engine/stop', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def stop_scoring():
     if not _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is not running!')
@@ -81,7 +81,7 @@ async def stop_scoring():
     se.stop = True
     return {'ok': True}
 
-@app.get(f'/api/{api_version}/engine', dependencies=[Depends(api_key_auth)])
+@app.get(f'/api/{api_version}/engine', tags=['engine'], dependencies=[Depends(api_key_auth)])
 async def get_scoring_state():
     return {'running': _enginelock, 'paused': se.pause}
 

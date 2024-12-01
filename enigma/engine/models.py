@@ -54,7 +54,7 @@ class BoxCreate(BoxBase):
     pass
 
 class BoxPublic(BoxBase):
-    id: int
+    pass
 
 class BoxUpdate(BoxBase):
     name: str | None = None
@@ -74,7 +74,7 @@ class CredlistCreate(CredlistBase):
     pass
 
 class CredlistPublic(CredlistBase):
-    id: int
+    pass
 
 class CredlistUpdate(CredlistBase):
     name: str | None = None
@@ -94,7 +94,7 @@ class InjectCreate(InjectBase):
     pass
 
 class InjectPublic(InjectBase):
-    id: int
+    pass
 
 class InjectUpdate(InjectBase):
     num: int | None = None
@@ -115,7 +115,7 @@ class TeamCreate(TeamBase):
     pass
 
 class TeamPublic(TeamBase):
-    id: int
+    pass
 
 class TeamUpdate(TeamBase):
     name: str | None = None
@@ -134,7 +134,7 @@ class TeamCredsTable(TeamCredsBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
 class TeamCredsPublic(TeamCredsBase):
-    id: int
+    pass
 
 class TeamCredsUpdate(TeamCredsBase):
     name: str | None = None
@@ -155,7 +155,7 @@ class SLAReport(SLAReportBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     
 class SLAReportPublic(SLAReportBase):
-    id: int
+    pass
 
 # Inject reports
 class InjectReportBase(SQLModel):
@@ -172,7 +172,7 @@ class InjectReportCreate(InjectReportBase):
     pass
 
 class InjectReportPublic(InjectReportBase):
-    id: int
+    pass
     
 class InjectReportUpdate(InjectReportBase):
     team_id: int | None = None
@@ -191,4 +191,4 @@ class ScoreReport(ScoreReportBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
 class ScoreReportPublic(ScoreReportBase):
-    id: int
+    pass
