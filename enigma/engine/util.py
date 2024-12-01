@@ -3,7 +3,7 @@ from os.path import join, splitext, isfile
 import tomllib, csv, json
 import random
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from engine.database import db_engine
 from engine.checks import Service
@@ -462,6 +462,8 @@ class FileConfigLoader():
         with open('./settings.toml', 'rb') as f:
             data = tomllib.load(f)
         with Session(db_engine) as session:
+            session.exec(delete(Settings))
+            session.commit()
             session.add(
                 Settings(
                     log_level=data['general']['log_level'],
@@ -484,6 +486,8 @@ class FileConfigLoader():
     @classmethod
     def load_api_key(cls):
         with Session(db_engine) as session:
+            session.exec(delete(APIKey))
+            session.commit()
             session.add(
                 APIKey.new(
                     name='main',

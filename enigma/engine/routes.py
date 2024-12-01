@@ -67,8 +67,8 @@ async def add_box(*, session: Session = Depends(get_session), box: BoxCreate):
     return db_box
 
 @box_router.get('/', response_model=list[BoxPublic])
-async def list_boxes(*, session: Session = Depends(get_session), offset: int=0, limit: int=Query(default=10, le=50)):
-    boxes = session.exec(select(BoxTable).offset(offset).limit(limit)).all()
+async def list_boxes(*, session: Session = Depends(get_session)):
+    boxes = session.exec(select(BoxTable)).all()
     return boxes
 
 @box_router.get('/{box_name}', response_model=BoxPublic)
@@ -118,8 +118,8 @@ async def add_credlist(*, session: Session = Depends(get_session), credlist: Cre
     return db_credlist
 
 @creds_router.get('/', response_model=list[CredlistPublic])
-async def list_credlists(*, session: Session = Depends(get_session), offset: int=0, limit: int=Query(default=10, le=50)):
-    credlists = session.exec(select(CredlistTable).offset(offset).limit(limit)).all()
+async def list_credlists(*, session: Session = Depends(get_session)):
+    credlists = session.exec(select(CredlistTable)).all()
     return credlists
 
 @creds_router.get('/{creds_name}', response_model=CredlistPublic)
@@ -171,8 +171,8 @@ async def add_inject(*, session: Session = Depends(get_session), inject: InjectC
     return db_inject
 
 @injects_router.get('/', response_model=list[InjectPublic])
-async def list_injects(*, session: Session = Depends(get_session), offset: int=0, limit: int=Query(default=10, le=50)):
-    injects = session.exec(select(InjectTable).offset(offset).limit(limit)).all()
+async def list_injects(*, session: Session = Depends(get_session)):
+    injects = session.exec(select(InjectTable)).all()
     return injects
 
 @injects_router.get('/{inject_name}', response_model=InjectPublic)
@@ -224,8 +224,8 @@ async def add_team(*, session: Session = Depends(get_session), team: TeamCreate)
     return db_team
 
 @team_router.get('/', response_model=list[TeamPublic])
-async def list_teams(*, session: Session = Depends(get_session), offset: int=0, limit: int=Query(default=10, le=50)):
-    teams = session.exec(select(TeamTable).offset(offset).limit(limit)).all()
+async def list_teams(*, session: Session = Depends(get_session)):
+    teams = session.exec(select(TeamTable)).all()
     return teams
 
 @team_router.get('/{team_id}', response_model=TeamPublic)
@@ -265,8 +265,8 @@ async def delete_team(*, session: Session = Depends(get_session), team_id: int):
 
 # TeamCreds routes
 @teamcreds_router.get('/{team_id}', response_model=list[TeamCredsPublic])
-async def list_teamcreds(*, session: Session = Depends(get_session), team_id: int, offset: int=0, limit: int=Query(default=10, le=50)):
-    teamcreds = session.exec(select(TeamCredsTable).where(TeamCredsTable.team_id == team_id).offset(offset).limit(limit)).all()
+async def list_teamcreds(*, session: Session = Depends(get_session), team_id: int):
+    teamcreds = session.exec(select(TeamCredsTable).where(TeamCredsTable.team_id == team_id)).all()
     return teamcreds
 
 @teamcreds_router.get('/{team_id}/{credlist_name}', response_model=TeamCredsPublic)

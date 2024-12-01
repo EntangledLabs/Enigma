@@ -9,6 +9,7 @@ import requests
 load_dotenv(override=True)
 
 api_url = getenv('API_URL')
+api_version = '1.0.1'
 
 headers = {
     "Content-Type": "application/json",
@@ -29,34 +30,20 @@ api_tags = {
 }
 
 def enigma_path(tag: str, index: int=None, num: int=None, specific1=None, specific2=None):
-    if api_url[-1:] == '/':
-        return (
-            api_url[:-1] 
-            + api_tags[tag]
-            + (
-                f'{specific2}/' if specific2 is not None else ''
-            )
-            + (
-                f'{specific1}' if specific1 is not None else ''
-            )
-            + (
-                f'?offset={index}&limit={num}' if index is not None and num is not None else ''
-            )
+    return (
+        api_url
+        + api_version
+        + api_tags[tag]
+        + (
+            f'{specific2}/' if specific2 is not None else ''
         )
-    else:
-        return (
-            api_url[:-1] 
-            + api_tags[tag]
-            + (
-                f'{specific2}/' if specific2 is not None else ''
-            )
-            + (
-                f'{specific1}' if specific1 is not None else ''
-            )
-            + (
-                f'?offset={index}&limit={num}' if index is not None and num is not None else ''
-            )
+        + (
+            f'{specific1}' if specific1 is not None else ''
         )
+        + (
+            f'?offset={index}&limit={num}' if index is not None and num is not None else ''
+        )
+    )
 
 def dump_toml(path: str):
     with open(path, 'rb') as f:
@@ -95,7 +82,7 @@ class Box(BaseModel):
     @classmethod
     def add(cls, box):
         if isinstance(box, Box):
-            return requests.post(enigma_path('box'), json=box.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('box'), json=box.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -130,7 +117,7 @@ class Credlist(BaseModel):
     @classmethod
     def add(cls, creds):
         if isinstance(creds, Credlist):
-            return requests.post(enigma_path('creds'), json=creds.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('creds'), json=creds.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -166,7 +153,7 @@ class Inject(BaseModel):
     @classmethod
     def add(cls, inject):
         if isinstance(inject, Inject):
-            return requests.post(enigma_path('inject'), json=inject.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('inject'), json=inject.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -202,7 +189,7 @@ class Team(BaseModel):
     @classmethod
     def add(cls, team):
         if isinstance(team, Team):
-            return requests.post(enigma_path('team'), json=team.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('team'), json=team.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -256,7 +243,7 @@ class InjectReport(BaseModel):
     @classmethod
     def add(cls, inject_report):
         if isinstance(inject_report, InjectReport):
-            return requests.post(enigma_path('inject-report'), json=inject_report.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('inject-report'), json=inject_report.model_dump(), headers=headers)
         return False
 
     @classmethod

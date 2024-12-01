@@ -1,6 +1,6 @@
 services:
   enigma:
-    container_name: 'enigma'
+    container_name: enigma
     image: enigma:latest
     build: ./enigma
     ports:
@@ -19,15 +19,37 @@ services:
       db-enigma:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4731"]
-
+      test: ["CMD-SHELL", "curl -f -X GET http://localhost:4731/ -H 'accept: application/json'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   #parable:
+    #container_name: parable-app
+    #image: parable:latest
     #build: ./parable
     #depends_on:
       #enigma:
         #condition: service_healthy
         #restart: true
+
+  discord:
+    container_name: enigma-discord
+    image: enigma_bot:latest
+    build: ./enigma_bot
+    env_file:
+      - ".env"
+    environment:
+      API_URL: 'http://enigma-engine:4731/api/'
+    volumes:
+      - ./logs:/enigma_bot/logs:rw
+    networks:
+      - frontend
+    restart: no
+    depends_on:
+      enigma:
+        condition: service_healthy
 
   proxy:
     container_name: parable-proxy
@@ -37,7 +59,7 @@ services:
     networks:
       - frontend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
+      test: ["CMD-SHELL", "curl", "-f", "http://localhost"]
       interval: 1m30s
       timeout: 10s
       retries: 3
@@ -45,7 +67,7 @@ services:
       start_interval: 5s
 
   db-enigma:
-    container_name: 'enigma-postgres'
+    container_name: enigma-postgres
     image: 'postgres:alpine'
     restart: always
     env_file:
@@ -55,20 +77,19 @@ services:
       POSTGRES_DB: enigma
     networks:
       - backend
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U enigma']
-      interval: 10s
+      interval: 5s
       retries: 5
       timeout: 5s
 
 networks:
   backend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.gateway_mode_ipv4: "nat"
-      com.docker.network.bridge.enable_icc: "true"
-      com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
   frontend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.enable_icc: "true"
+
+volumes:
+  pgdata:

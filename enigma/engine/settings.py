@@ -9,7 +9,7 @@ load_dotenv(override=True)
 
 db_url = getenv('DB_URL')
 api_key = getenv('API_KEY')
-api_version = '1.0.0'
+api_version = '1.0.1'
 
 #boxes_path = join(getcwd(), 'boxes')        # Path to boxes config directory
 #creds_path = './creds/'                     # Path to creds config directory

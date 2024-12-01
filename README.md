@@ -10,8 +10,6 @@ Parable allows a competitor end user to view a wide variety of information relev
 
 Enigma has Discord integration and will automatically manage channels and roles. Competitors will be able to submit various requests through Discord to supplement their use of Parable, such as green team support and box reset requests.
 
-[Link to Discord bot](https://discord.com/oauth2/authorize?client_id=1311244971348725780&permissions=8&integration_type=0&scope=bot)
-
 ## Details
 Built on Python 3.13.0 with Django and FastAPI
 
