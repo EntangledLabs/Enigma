@@ -5,12 +5,12 @@ import random
 
 from sqlmodel import Session, select
 
-import tomli_w
-
 from engine.database import db_engine
 from engine.checks import Service
 from engine.models import InjectReport, SLAReport, ScoreReport, Settings
-from engine.models import TeamCredsTable, TeamTable, BoxTable, InjectTable, CredlistTable
+from engine.models import TeamCredsTable, TeamTable
+from engine.auth import APIKey
+from engine.settings import api_key
 
 ###################################################
 # Class Box
@@ -477,6 +477,17 @@ class FileConfigLoader():
                     sla_penalty=data['round']['sla_penalty'],
                     first_octets=data['environment']['first_octets'],
                     first_pod_third_octet=data['environment']['first_pod_third_octet']
+                )
+            )
+            session.commit()
+
+    @classmethod
+    def load_api_key(cls):
+        with Session(db_engine) as session:
+            session.add(
+                APIKey.new(
+                    name='main',
+                    api_key=api_key
                 )
             )
             session.commit()

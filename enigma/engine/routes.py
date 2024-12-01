@@ -376,10 +376,10 @@ async def update_settings(*, session: Session = Depends(get_session), settings: 
     global _enginelock
     if _enginelock:
         raise HTTPException(status_code=423, detail='Enigma is running! Cannot modify settings during the competition')
-    settings = session.exec(select(Settings)).one()
+    db_settings = session.exec(select(Settings)).one()
     settings_data = settings.model_dump(exclude_unset=True)
-    settings.sqlmodel_update(settings_data)
-    session.add(settings)
+    db_settings.sqlmodel_update(settings_data)
+    session.add(db_settings)
     session.commit()
-    session.refresh(settings)
-    return settings
+    session.refresh(db_settings)
+    return db_settings

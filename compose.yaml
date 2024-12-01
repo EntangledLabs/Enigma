@@ -1,6 +1,7 @@
 services:
   enigma:
     container_name: 'enigma'
+    image: enigma:latest
     build: ./enigma
     ports:
       - "4731:4731"
@@ -13,6 +14,7 @@ services:
     networks:
       - backend
       - frontend
+    restart: no
     depends_on:
       db-enigma:
         condition: service_healthy
