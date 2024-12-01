@@ -95,7 +95,7 @@ class Box(BaseModel):
     @classmethod
     def add(cls, box):
         if isinstance(box, Box):
-            return requests.post(enigma_path('box'), json=box.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('box'), json=box.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -130,7 +130,7 @@ class Credlist(BaseModel):
     @classmethod
     def add(cls, creds):
         if isinstance(creds, Credlist):
-            return requests.post(enigma_path('creds'), json=creds.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('creds'), json=creds.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -166,7 +166,7 @@ class Inject(BaseModel):
     @classmethod
     def add(cls, inject):
         if isinstance(inject, Inject):
-            return requests.post(enigma_path('inject'), json=inject.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('inject'), json=inject.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -202,7 +202,7 @@ class Team(BaseModel):
     @classmethod
     def add(cls, team):
         if isinstance(team, Team):
-            return requests.post(enigma_path('team'), json=team.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('team'), json=team.model_dump(), headers=headers)
         return False
 
     @classmethod
@@ -256,7 +256,7 @@ class InjectReport(BaseModel):
     @classmethod
     def add(cls, inject_report):
         if isinstance(inject_report, InjectReport):
-            return requests.post(enigma_path('inject-report'), json=inject_report.model_dump_json(), headers=headers)
+            return requests.post(enigma_path('inject-report'), json=inject_report.model_dump(), headers=headers)
         return False
 
     @classmethod

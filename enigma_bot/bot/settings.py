@@ -9,4 +9,4 @@ load_dotenv(override=True)
 logs_path = join(getcwd(), 'logs')
 log_file = join(logs_path, 'discord_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S')))
 
-guild_id = getenv('DISCORD_GUILD_ID')
+guild_id = int(getenv('DISCORD_GUILD_ID'))

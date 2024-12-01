@@ -1,18 +1,17 @@
-from enigma_requests import *
+import tomllib, tomli_w
 
-import tomli_w, tomllib
+from enigma_requests import Box
 
-#settings = Settings()
-#print(Settings.get().comp_name)
-#Settings.update({'check_time': 20})
-#print(Settings.get().check_time)
+with open('./example_configs/boxes/examplebox.toml', 'rb') as f:
+    Box.add(Box(
+        name='examplebox',
+        identifier=1,
+        config=tomli_w.dumps(tomllib.load(f))
+    ))
 
-#print(Box.add({'name': 'examplebox', 'identifier': 1, 'config': dump_toml('./example_configs/boxes/examplebox.toml')}))
-#print(Box.list())
-#print(Box.get('examplebox'))
-#print(Box.update('examplebox', {'identifier': 29}))
-#print(Box.delete('examplebox'))
-
-#print(enigma_path('inject-report', specific1=2, specific2=1))
-
-print(EnigmaCMD.get_state())
+with open('./example_configs/boxes/examplebox2.toml', 'rb') as f:
+    Box.add(Box(
+        name='examplebox2',
+        identifier=2,
+        config=tomli_w.dumps(tomllib.load(f))
+    ))
