@@ -11,9 +11,6 @@ services:
       DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
     volumes:
       - ./logs:/enigma_engine/logs:rw
-    networks:
-      - backend
-      - frontend
     restart: no
     depends_on:
       db-enigma:
@@ -25,27 +22,36 @@ services:
       retries: 3
       start_period: 30s
 
-  #parable:
-    #container_name: parable-app
-    #image: parable:latest
-    #build: ./parable
-    #depends_on:
-      #enigma:
-        #condition: service_healthy
-        #restart: true
+  parable:
+    container_name: parable
+    image: parable:latest
+    build: ./parable
+    ports:
+      - "5070:5070"
+    env_file:
+      - ".env"
+    environment:
+      DB_URL: 'enigma-postgres'
+    depends_on:
+      enigma:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -X GET http://localhost:5070/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   discord:
     container_name: enigma-discord
-    image: enigma_bot:latest
+    image: enigma-bot:latest
     build: ./enigma_bot
     env_file:
       - ".env"
     environment:
-      API_URL: 'http://enigma-engine:4731/api/'
+      API_URL: 'http://enigma:4731/api/'
     volumes:
       - ./logs:/enigma_bot/logs:rw
-    networks:
-      - frontend
     restart: no
     depends_on:
       enigma:
@@ -53,11 +59,13 @@ services:
 
   proxy:
     container_name: parable-proxy
-    image: 'nginx:stable-alpine'
+    image: 'nginx-enigma:stable-alpine'
+    build: ./nginx
     ports:
       - "80:80"
-    networks:
-      - frontend
+    depends_on:
+      parable:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl", "-f", "http://localhost"]
       interval: 1m30s
@@ -68,15 +76,16 @@ services:
 
   db-enigma:
     container_name: enigma-postgres
-    image: 'postgres:alpine'
+    image: 'postgres-enigma:alpine'
+    build: ./postgres
+    ports:
+      - "5432:5432"
     restart: always
     env_file:
       - ".env"
     environment:
       POSTGRES_USER: enigma
       POSTGRES_DB: enigma
-    networks:
-      - backend
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -84,12 +93,6 @@ services:
       interval: 5s
       retries: 5
       timeout: 5s
-
-networks:
-  backend:
-    driver: bridge
-  frontend:
-    driver: bridge
 
 volumes:
   pgdata:

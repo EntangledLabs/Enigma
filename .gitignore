@@ -22,4 +22,3 @@ build/
 enigma/scores/*.csv
 
 .VSCodeCounter/
-enigma_bot/enigma_requests/
