@@ -1,0 +1,29 @@
+{
+  "name": "parable",
+  "version": "0.0.1",
+  "description": "interactive web interface for enigma scoring engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "lint": "eslint . --ext .vue,.js",
+    "fix": "npm run lint -- --fix",
+    "test": "npm run build && npm run lint"
+  },
+  "author": "entangled",
+  "private": true,
+  "dependencies": {
+    "bootstrap": "^5.3.3",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "eslint": "^9.16.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "sass": "^1.81.1",
+    "sass-loader": "^16.0.3",
+    "vite": "^6.0.2",
+    "vue-loader": "^17.4.2"
+  }
+}
