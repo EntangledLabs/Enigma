@@ -1,10 +1,20 @@
 @import "../node_modules/bootstrap/scss/bootstrap";
 
-.bg-enigma {
-    background: linear-gradient(to bottom, #931a00 0%, #1a0093 100%);
+.enigma-red {
+    background-color: #931a00;
 }
 
-$primary: bg-enigma;
+.enigma-navbar {
+    background-color: #272727;
+}
+
+$primary: enigma-red;
+
+$theme-colors: map-merge($theme-colors, (
+    "primary": $primary
+));
+
+$primary: enigma-navbar;
 
 $theme-colors: map-merge($theme-colors, (
     "primary": $primary

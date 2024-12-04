@@ -11844,8 +11844,12 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
-.bg-enigma {
-  background: linear-gradient(to bottom, #931a00 0%, #1a0093 100%);
+.enigma-red {
+  background-color: #931a00;
+}
+
+.enigma-navbar {
+  background-color: #272727;
 }
 
 /*# sourceMappingURL=parable.css.map */
