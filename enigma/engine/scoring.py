@@ -8,7 +8,8 @@ from engine.util import Box, Inject, Team, Credlist
 from engine.database import db_engine
 from engine.models import *
 from engine.checks import Service
-from engine import log, _enginelock
+from engine import log
+from engine.settings import scores_path
 
 engine_router = APIRouter(
     prefix='/engine',
@@ -22,6 +23,7 @@ class ScoringEngine():
         self.pause = False
         self.stop = False
         self.teams_detected = False
+        self.enginelock = False
 
         # Initialize environment information
         with Session(db_engine) as session:
@@ -51,8 +53,7 @@ class ScoringEngine():
         self.round = 1
 
     async def run(self, total_rounds: int=0):
-        global _enginelock
-        _enginelock = True
+        self.enginelock = True
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
             log.info('Round {}'.format(self.round))
             if self.pause:
@@ -62,17 +63,14 @@ class ScoringEngine():
             log.info('Starting scoring')
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
-            self.conduct_pcrs()
-            is_scoring = True
             await self.score_services(self.round)
             log.info('Round {} done! Waiting for next round start...'.format(self.round))
             self.round = self.round + 1
             wait_time = self.check_time + random.randint(-self.check_jitter, self.check_jitter)
-            is_scoring = False
             await asyncio.sleep(wait_time)
         log.info('Stopping scoring!')
         self.stop = False
-        _enginelock = False
+        self.enginelock = False
         log.info('Exporting CSVs with competitor data')
         #self.export_all_as_csv()
 
@@ -191,9 +189,9 @@ class ScoringEngine():
 
     # Find/create methods for relevant competition data
 
-    """def export_all_as_csv(self):
+    def export_all_as_csv(self):
         for team_id, team in self.teams.items():
-            team.export_scores_csv('{}_scores'.format(team.name), scores_path)"""
+            team.export_scores_csv('{}_scores'.format(team.name), scores_path)
 
     def find_boxes(self) -> list[Box]:
         boxes = list()

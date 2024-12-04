@@ -11,6 +11,15 @@ from enigma_requests import EnigmaCMD, Settings, Team, Box
 from bot import log
 from bot.settings import guild_id
 
+###############
+# TODO: Add "discord event" creation
+# TODO: Add team creds
+
+
+
+
+
+
 # Create the discord bot
 intents = discord.Intents.default()
 intents.members = True
