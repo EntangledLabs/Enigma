@@ -1,3 +1,4 @@
+![Static Badge](https://img.shields.io/badge/Python-3.13.0-blue)
 # Enigma Scoring Engine with Parable Interactive Web Panel
 A scoring engine for Red vs Blue cybersecurity competitions.
 
