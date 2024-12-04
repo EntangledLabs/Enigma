@@ -10,7 +10,8 @@ services:
     environment:
       DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
     volumes:
-      - ./logs:/enigma_engine/logs:rw
+      - ./logs:/enigma_engine/logs
+      - csvfiles:/enigma_engine/scores
     restart: no
     depends_on:
       db-enigma:
@@ -96,3 +97,4 @@ services:
 
 volumes:
   pgdata:
+  csvfiles:

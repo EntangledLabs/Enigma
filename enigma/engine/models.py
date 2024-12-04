@@ -150,7 +150,7 @@ class SLAReportBase(SQLModel):
     round: int
     service: str
 
-class SLAReport(SLAReportBase, table=True):
+class SLAReportTable(SLAReportBase, table=True):
     __tablename__ = 'slareports'
     id: int | None = Field(default=None, primary_key=True)
     
@@ -164,7 +164,7 @@ class InjectReportBase(SQLModel):
     score: int
     breakdown: str
 
-class InjectReport(InjectReportBase, table=True):
+class InjectReportTable(InjectReportBase, table=True):
     __tablename__ = 'injectreports'
     id: int | None = Field(default=None, primary_key=True)
 
@@ -186,7 +186,7 @@ class ScoreReportBase(SQLModel):
     round: int
     score: int
 
-class ScoreReport(ScoreReportBase, table=True):
+class ScoreReportTable(ScoreReportBase, table=True):
     __tablename__ = 'scorereports'
     id: int | None = Field(default=None, primary_key=True)
 

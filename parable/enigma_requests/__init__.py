@@ -9,7 +9,7 @@ import requests
 load_dotenv(override=True)
 
 api_url = getenv('API_URL')
-api_version = '1.0.1'
+api_version = getenv('API_VERSION')
 
 headers = {
     "Content-Type": "application/json",
@@ -32,7 +32,7 @@ api_tags = {
 def enigma_path(tag: str, index: int=None, num: int=None, specific1=None, specific2=None):
     return (
         api_url
-        + api_version
+        + f'v{api_version}'
         + api_tags[tag]
         + (
             f'{specific2}/' if specific2 is not None else ''
