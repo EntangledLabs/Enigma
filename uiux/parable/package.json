@@ -9,7 +9,8 @@
     "preview": "vite preview --port 4173",
     "lint": "eslint . --ext .vue,.js",
     "fix": "npm run lint -- --fix",
-    "test": "npm run build && npm run lint"
+    "test": "npm run build && npm run lint",
+    "map": "sass --watch ./scss/parable.scss ./css/parable.css"
   },
   "author": "entangled",
   "private": true,
