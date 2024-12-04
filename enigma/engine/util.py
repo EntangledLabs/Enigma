@@ -7,7 +7,7 @@ from sqlmodel import Session, select, delete
 
 from engine.database import db_engine
 from engine.checks import Service
-from engine.models import InjectReport, SLAReport, ScoreReport, Settings
+from engine.models import InjectReportTable, SLAReportTable, ScoreReportTable, Settings
 from engine.models import TeamCredsTable, TeamTable
 from engine.auth import APIKey
 from engine.settings import api_key
@@ -122,13 +122,13 @@ class Inject():
             score = score + self.breakdown.get(cat).get(scores.get(cat))
         with Session(db_engine) as session:
             inject_report = session.exec(
-                select(InjectReport).where(
-                    InjectReport.team_id == team_id
-                ).where(InjectReport.inject_num == self.id)
+                select(InjectReportTable).where(
+                    InjectReportTable.team_id == team_id
+                ).where(InjectReportTable.inject_num == self.id)
             ).one()
             if inject_report is None:
                 session.add(
-                    InjectReport(
+                    InjectReportTable(
                         team_id=team_id,
                         inject_num=self.id,
                         score=score
@@ -235,7 +235,7 @@ class Team():
                             self.award_sla_penalty(service)
                             self.sla_tracker.pop(service)
                             session.add(
-                                SLAReport(
+                                SLAReportTable(
                                     team_id = self.identifier,
                                     round = round,
                                     service = service
@@ -251,8 +251,8 @@ class Team():
         # Inject tabulation
         with Session(db_engine) as session:
             inject_reports = session.exec(
-                select(InjectReport).where(
-                    InjectReport.team_id == self.identifier
+                select(InjectReportTable).where(
+                    InjectReportTable.team_id == self.identifier
                 )
             ).all()
         for inject in inject_reports:
@@ -264,7 +264,7 @@ class Team():
         # Publish score report
         with Session(db_engine) as session:
             session.add(
-                ScoreReport(
+                ScoreReportTable(
                     team_id = self.identifier,
                     round = round,
                     score = self.total_scores['total_score']
