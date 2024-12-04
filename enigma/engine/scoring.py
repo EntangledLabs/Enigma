@@ -62,7 +62,6 @@ class ScoringEngine():
             log.info('Starting scoring')
             self.boxes = self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
-            self.conduct_pcrs()
             is_scoring = True
             await self.score_services(self.round)
             log.info('Round {} done! Waiting for next round start...'.format(self.round))
