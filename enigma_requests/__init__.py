@@ -25,7 +25,8 @@ api_tags = {
     'sla': '/sla-reports/',
     'inject-report': '/inject-reports/',
     'score': '/score-reports/',
-    'engine': '/engine/'
+    'engine': '/engine/',
+    'user': '/parableusers/'
 
 }
 
@@ -269,7 +270,8 @@ class InjectReport(BaseModel):
     @classmethod
     def delete(cls, inject_id: int, team_id: int):
         return requests.delete(enigma_path('inject-report', specific1=team_id, specific2=inject_id), headers=headers)
-    
+
+# Score Reports
 class ScoreReport(BaseModel):
     team_id: int
     round: int
@@ -301,7 +303,8 @@ class ScoreReport(BaseModel):
     def get(cls, team_id: int):
         score_report_data = requests.get(enigma_path('score', specific1=team_id), headers=headers)
         return ScoreReport.model_validate_json(score_report_data.text)
-    
+
+# Engine commands
 class EnigmaCMD(BaseModel):
     running: bool
     paused: bool
@@ -330,3 +333,32 @@ class EnigmaCMD(BaseModel):
     def get_state(cls):
         engine_data = requests.get(enigma_path('engine'), headers=headers)
         return EnigmaCMD.model_validate_json(engine_data.text)
+
+# Parable
+class ParableUser(BaseModel):
+    username: str
+    identifier: int
+    permission_level: int
+    password: str | None = None
+
+    @classmethod
+    def add(cls, user):
+        if isinstance(user, cls):
+            return requests.post(enigma_path('user'), json=user.model_dump(), headers=headers)
+        return False
+    
+    @classmethod
+    def delete(cls, username: str):
+        return requests.delete(enigma_path('user', specific1=username, specific2='user'), headers=headers)
+    
+    @classmethod
+    def permissions(cls) -> dict:
+        perms = requests.get(enigma_path('user', specific1='permission-levels'), headers=headers).text
+        perms = json.loads(perms)
+        return perms
+    
+    @classmethod
+    def last_identifier(cls) -> int:
+        last_identifier = requests.get(enigma_path('user', specific1='last-identifier'), headers=headers).text
+        last_identifier = json.loads(last_identifier)
+        return int(last_identifier['identifier'])

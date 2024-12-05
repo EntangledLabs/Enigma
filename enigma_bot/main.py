@@ -6,10 +6,11 @@ import csv, re
 import discord
 from discord.ext import commands
 
-from enigma_requests import EnigmaCMD, Settings, Team, Box
+from enigma_requests import Settings, Team, Box, ParableUser
 
 from bot import log
 from bot.settings import guild_id
+from bot.util import create_pw
 
 ###############
 # TODO: Add "discord event" creation
@@ -149,9 +150,11 @@ async def create_teams(ctx: commands.context.Context):
 
     await delete_teams(ctx)
 
+    username_pw_combos = {}
+
     with TextIOWrapper(BytesIO(await ctx.message.attachments[0].read())) as f:
         csvreader = csv.reader(f)
-        identifier = 1
+        identifier = ParableUser.last_identifier() + 1
         for row in csvreader:
             teamname = row.pop(0)
 
@@ -160,6 +163,17 @@ async def create_teams(ctx: commands.context.Context):
                 identifier=identifier,
                 score=0
             )).text
+            parable_pw = create_pw(length=24)
+            ParableUser.add(ParableUser(
+                username=teamname,
+                identifier=identifier,
+                permission_level=2,
+                password=parable_pw
+            ))
+
+            username_pw_combos.update({
+                teamname: parable_pw
+            })
 
             team_role = await guild.create_role(name=f'Team {teamname}')
             team_overwrites = {
@@ -183,6 +197,10 @@ async def create_teams(ctx: commands.context.Context):
                     await member.add_roles(role)
 
             identifier = identifier + 1
+    """except:
+        log.info('No CSV provided! Cannot create teams')
+        await ctx.send('No CSV provided! Cannot create teams')
+        return"""
 
     log.info('Finished! Created teams')
     await ctx.send('Finished! Created teams')
@@ -213,6 +231,7 @@ async def delete_teams(ctx: commands.context.Context):
     db_teams = Team.list()
     for team in db_teams:
         Team.delete(team.identifier)
+        ParableUser.delete(team.name)
 
     log.info('Finished! Deleted teams')
     await ctx.send('Finished! Deleted teams')

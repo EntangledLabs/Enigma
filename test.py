@@ -1,7 +1,9 @@
 import tomllib, tomli_w, csv, json
 from os.path import join, splitext
 
-from enigma_requests import Box, Credlist, Inject
+import requests
+
+from enigma_requests import Box, Credlist, Inject, ParableUser
 
 with open(join('./example_configs/creds', 'examplecreds.csv'), 'r+') as f:
     data = csv.reader(f)
@@ -56,3 +58,12 @@ with open(join('./example_configs/injects', 'inject1.toml'), 'rb') as f:
             config=tomli_w.dumps(tomlreader)
         )
     ))
+
+print(ParableUser.add(
+    ParableUser(
+        username='neatteam',
+        identifier=2,
+        permission_level=ParableUser.permissions()['competitor'],
+        password='anotherpw'
+    )
+))

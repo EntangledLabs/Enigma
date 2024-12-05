@@ -1,27 +1,46 @@
 import asyncio
 import tomllib, json
+from datetime import timedelta
 
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from typing import Annotated
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select, delete
 import uvicorn
 
-from engine.database import init_db, db_engine
+from engine.database import init_db, get_session, db_engine
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
-from engine.settings import log_config, api_version
-from engine.auth import api_key_auth
+from engine import log_config, api_version
+from engine.auth import (
+    api_key_auth, 
+    ParableUser, 
+    Token, 
+    authenticate_user, 
+    get_current_user, 
+    create_access_token, 
+    permissions_levels,
+    ParableUserCreate,
+    ParableUserTable,
+    get_hash
+)
 from engine.models import *
-from engine import log
+from engine import log, access_token_expiration_mins
 
 # Initialize the DB
 log.info('Initializing DB')
-#del_db()
 init_db()
 
 # Create the scoring engine
 FileConfigLoader.load_settings()
 FileConfigLoader.load_api_key()
 se = ScoringEngine()
+
+# Auth router
+user_router = APIRouter(
+    prefix='/parableusers',
+    tags=['parableusers']
+)
 
 # Engine router
 engine_router = APIRouter(
@@ -70,9 +89,6 @@ score_report_router = APIRouter(
 )
 
 # Helpers
-def get_session():
-    with Session(db_engine) as session:
-        yield session
 
 obi_wan = HTTPException(status_code=400, detail='These aren\'t the rows you are looking for')
 
@@ -133,6 +149,7 @@ async def clean_tables(*, session: Session = Depends(get_session)):
     session.exec(delete(SLAReportTable))
     session.exec(delete(InjectReportTable))
     session.exec(delete(ScoreReportTable))
+    session.exec(delete(ParableUserTable))
     session.commit()
     return {'ok': True}
 
@@ -447,16 +464,22 @@ async def delete_inject_report(*, session: Session = Depends(get_session), injec
 @score_report_router.get('/by-round/{round_num}', response_model=list[ScoreReportPublic])
 async def list_score_reports_by_round(*, session: Session = Depends(get_session), round_num: int):
     score_reports = session.exec(select(ScoreReportTable).where(ScoreReportTable.round == round_num)).all()
+    if score_reports is None:
+        raise HTTPException(status_code=404, detail='No score reports found for that round')
     return score_reports
 
 @score_report_router.get('/by-team/{team_id}', response_model=list[ScoreReportPublic])
 async def list_score_reports_by_team(*, session: Session = Depends(get_session), team_id: int):
     score_reports = session.exec(select(ScoreReportTable).where(ScoreReportTable.team_id == team_id)).all()
+    if score_reports is None:
+        raise HTTPException(status_code=404, detail='No score reports found for that team')
     return score_reports
 
 @score_report_router.get('/{team_id}', response_model=ScoreReportPublic)
 async def get_latest_score_report(*, session: Session = Depends(get_session), team_id: int):
     score_report = session.exec(select(ScoreReportTable).where(ScoreReportTable.team_id == team_id).order_by(ScoreReportTable.round.desc())).first()
+    if score_report is None:
+        raise HTTPException(status_code=404, detail='No score reports found for that team')
     return score_report
 
 
@@ -478,10 +501,73 @@ async def update_settings(*, session: Session = Depends(get_session), settings: 
     session.refresh(db_settings)
     return db_settings
 
+################
+# Users routes
+@user_router.post('/', response_model=ParableUser)
+async def create_user(*, session: Session = Depends(get_session), parable_user: ParableUserCreate):
+    db_parable_user = ParableUserTable(
+        username=parable_user.username,
+        identifier=parable_user.identifier,
+        permission_level=parable_user.permission_level,
+        pwhash=get_hash(parable_user.password)
+    )
+    try:
+        session.add(db_parable_user)
+        session.commit()
+    except:
+        raise HTTPException(status_code=400, detail='Cannot add Parable user with non-unique properties!')
+    session.refresh(db_parable_user)
+    return db_parable_user
+
+@user_router.get('/', response_model=ParableUser)
+async def get_self(current_user: Annotated[ParableUser, Depends(get_current_user)]):
+    return current_user
+
+@user_router.get('/perms')
+async def get_perms(current_user: Annotated[ParableUser, Depends(get_current_user)]):
+    return {'permission_level': current_user.permission_level}
+
+@user_router.get('/user/{username}', response_model=ParableUser)
+async def get_user(*, session: Session = Depends(get_session), username: str):
+    user = session.exec(select(ParableUserTable).where(ParableUserTable.username == username)).one()
+    if user is None:
+        raise HTTPException(status_code=404, detail='No user found with that username!')
+    return user
+
+@user_router.get('/all', response_model=list[ParableUser])
+async def get_all_users(*, session: Session = Depends(get_session)):
+    users = session.exec(select(ParableUserTable)).all()
+    if users is None:
+        raise HTTPException(status_code=404, detail='No users found!')
+    return users
+
+@user_router.get('/last-identifier')
+async def get_last_identifier(*, session: Session = Depends(get_session)):
+    last_user = session.exec(select(ParableUserTable).order_by(ParableUserTable.identifier.desc())).first()
+    if last_user is None:
+        raise HTTPException(status_code=404, detail='No users found!')
+    return {'identifier': last_user.identifier}
+
+@user_router.get('/permission-levels')
+async def get_all_levels():
+    return permissions_levels
+
+@user_router.delete('/user/{username}')
+async def delete_credlist(*, session: Session = Depends(get_session), username: str):
+    user = session.exec(select(ParableUserTable).where(ParableUserTable.username == username)).one()
+    if user is None:
+        raise HTTPException(status_code=404, detail='No user found with that username!')
+    session.delete(user)
+    session.commit()
+    return {'ok': True}
+
+################
 # Creating new FastAPI app
+
 log.info('Initializing Enigma')
 app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', api_version=api_version)
 
+app.include_router(user_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(settings_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(engine_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 
@@ -501,6 +587,26 @@ log.info(f'Started Enigma Scoring Engine with API version v{api_version}')
 async def read_root():
     return {'ok': True}
 
+@app.post('/token')
+async def login(*, session: Session = Depends(get_session), form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user = authenticate_user(username=form_data.username, password=form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expiration_time = timedelta(minutes=access_token_expiration_mins)
+    access_token = create_access_token(
+        data = {
+            'sub': user.username
+        },
+        expires_delta=access_token_expiration_time
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+
+################
 if __name__ == '__main__':
     uvicorn.run(
         'main:app',

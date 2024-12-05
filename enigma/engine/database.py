@@ -1,8 +1,12 @@
-from sqlmodel import create_engine, SQLModel
+from sqlmodel import create_engine, SQLModel, Session
 
-from engine.settings import db_url
+from engine import db_url
 
 db_engine = create_engine(db_url, echo=False)
+
+def get_session():
+    with Session(db_engine) as session:
+        yield session
 
 def init_db():
     import engine.models
