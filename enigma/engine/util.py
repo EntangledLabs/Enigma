@@ -1,5 +1,4 @@
-from os import listdir
-from os.path import join, splitext, isfile
+from os.path import join
 import tomllib, csv, json
 import random
 
@@ -10,7 +9,7 @@ from engine.checks import Service
 from engine.models import InjectReportTable, SLAReportTable, ScoreReportTable, Settings
 from engine.models import TeamCredsTable, TeamTable
 from engine.auth import APIKey
-from engine.settings import api_key
+from engine import api_key
 
 ###################################################
 # Class Box
@@ -60,7 +59,7 @@ class Box():
     # Creates a new Box object from a config file or string
     @classmethod
     def new(cls, name:str, data: str):
-        data = tomllib.loads(data)
+        data = json.loads(data)
         box = cls(
             name=name,
             identifier=data['identifier'],
@@ -157,7 +156,7 @@ class Inject():
     # Creates a new Inject based on the config info
     @classmethod
     def new(cls, num: int, data: str):
-        data = tomllib.loads(data)
+        data = json.loads(data)
         inject = cls(
             num=num,
             name=data['name'],
@@ -495,68 +494,3 @@ class FileConfigLoader():
                 )
             )
             session.commit()
-
-    """@classmethod
-    def load_boxes(cls):
-        box_files = [f for f in listdir(boxes_path) 
-                     if isfile(join(boxes_path, f)) 
-                     and splitext(f)[-1].lower() == '.toml']
-        for box_file in box_files:
-            with open(join(boxes_path, box_file), 'rb') as f:
-                data = tomllib.load(f)
-                with Session(db_engine) as session:
-                    session.add(
-                        BoxTable(
-                            name=splitext(box_file)[0].lower(),
-                            identifier=data['identifier'],
-                            config=tomli_w.dumps(data)
-                        )
-                    )
-                    session.commit()"""
-        
-
-    """@classmethod
-    def load_creds(cls):
-        cred_files = [f for f in listdir(creds_path) 
-                     if isfile(join(creds_path, f)) 
-                     and splitext(f)[-1].lower() == '.csv']
-        for cred_file in cred_files:
-             with open(join(creds_path, cred_file), 'r+') as f:
-                data = csv.reader(f)
-                creds = dict()
-                for row in data:
-                    creds.update({row[0]: row[1]})
-                with Session(db_engine) as session:
-                    session.add(
-                        CredlistTable(
-                            name=splitext(cred_file)[0].lower(),
-                            creds=json.dumps(creds)
-                        )
-                    )
-                    session.commit()"""
-
-    """@classmethod
-    def load_injects(cls):
-        inject_files = [f for f in listdir(injects_path) 
-                       if isfile(join(injects_path, f)) 
-                       and splitext(f)[-1].lower() == '.toml']
-        for inject_file in inject_files:
-            with open(join(injects_path, inject_file), 'rb') as f:
-                data = tomllib.load(f)
-                with Session(db_engine) as session:
-                    session.add(
-                        InjectTable(
-                            num=int(splitext(inject_file)[0].lower()[-1]),
-                            name=data['name'],
-                            config=tomli_w.dumps(data)
-                        )
-                    )
-                    session.commit()"""
-
-    """@classmethod
-    def load_all(cls):
-        cls.load_settings()
-        #cls.load_boxes()
-        #cls.load_creds()
-        #cls.load_injects()
-        log.info('Added any existing config files')"""

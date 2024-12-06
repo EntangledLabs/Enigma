@@ -77,8 +77,7 @@ services:
 
   db-enigma:
     container_name: enigma-postgres
-    image: 'postgres-enigma:alpine'
-    build: ./postgres
+    image: postgres:alpine
     ports:
       - "5432:5432"
     restart: always

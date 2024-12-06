@@ -1,20 +1,14 @@
 import random, json
 import asyncio
 
-from fastapi import APIRouter
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select
 
 from engine.util import Box, Inject, Team, Credlist
+from engine.auth import ParableUserTable, get_hash
 from engine.database import db_engine
 from engine.models import *
 from engine.checks import Service
-from engine import log
-from engine.settings import scores_path
-
-engine_router = APIRouter(
-    prefix='/engine',
-    tags=['engine']
-)
+from engine import log, scores_path
 
 class ScoringEngine():
     
@@ -42,6 +36,28 @@ class ScoringEngine():
             self.sla_penalty = session.exec(select(Settings)).one().sla_penalty
 
             self.environment = session.exec(select(Settings)).one().first_octets
+
+        try:
+            with Session(db_engine) as session:
+                session.add(
+                    ParableUserTable(
+                        username='admin',
+                        identifier=0,
+                        permission_level=0,
+                        pwhash=get_hash('enigma')
+                    )
+                )
+                session.add(
+                    ParableUserTable(
+                        username='green',
+                        identifier=-1,
+                        permission_level=1,
+                        pwhash=get_hash('parable')
+                    )
+                )
+                session.commit()
+        except:
+            pass
 
         # Verify settings
         if self.check_jitter >= self.check_time:
