@@ -8,6 +8,10 @@
     background-color: #272727;
 }
 
+.enigma-border {
+    color: #272727
+}
+
 $primary: enigma-red;
 
 $theme-colors: map-merge($theme-colors, (
@@ -15,6 +19,12 @@ $theme-colors: map-merge($theme-colors, (
 ));
 
 $primary: enigma-navbar;
+
+$theme-colors: map-merge($theme-colors, (
+    "primary": $primary
+));
+
+$primary: enigma-border;
 
 $theme-colors: map-merge($theme-colors, (
     "primary": $primary
