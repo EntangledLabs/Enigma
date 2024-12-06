@@ -59,7 +59,7 @@ class Box():
     # Creates a new Box object from a config file or string
     @classmethod
     def new(cls, name:str, data: str):
-        data = tomllib.loads(data)
+        data = json.loads(data)
         box = cls(
             name=name,
             identifier=data['identifier'],
@@ -156,7 +156,7 @@ class Inject():
     # Creates a new Inject based on the config info
     @classmethod
     def new(cls, num: int, data: str):
-        data = tomllib.loads(data)
+        data = json.loads(data)
         inject = cls(
             num=num,
             name=data['name'],

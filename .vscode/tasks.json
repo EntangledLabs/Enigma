@@ -4,19 +4,19 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "compose up",
+            "label": "docker compose up",
             "type": "shell",
             "command": "docker compose up -d",
             "problemMatcher": []
         },
         {
-            "label": "compose down",
+            "label": "docker compose down",
             "type": "shell",
             "command": "docker compose down; docker image rm parable:latest enigma:latest enigma-bot:latest",
             "problemMatcher": []
         },
         {
-            "label": "compose redeploy",
+            "label": "docker compose redeploy",
             "type": "shell",
             "command": "docker compose down; docker image rm parable:latest enigma:latest enigma-bot:latest; docker compose up -d",
             "problemMatcher": []
