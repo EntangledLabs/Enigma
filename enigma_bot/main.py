@@ -1,5 +1,5 @@
 from os import getenv
-from io import TextIOWrapper, BytesIO
+from io import TextIOWrapper, BytesIO, StringIO
 import asyncio
 import csv, re
 
@@ -194,16 +194,28 @@ async def create_teams(ctx: commands.context.Context):
                     discord.utils.get(guild.roles, name=f'{comp_name.lower().capitalize()} Competitor')
                 ]
                 for role in roles:
+                    print(teammate, member, team_role)
                     await member.add_roles(role)
 
+            await team_cat.text_channels[0].send(f'{team_role.mention} Welcome to {Settings.get().comp_name}! Your Parable login is **{teamname}** with password **{parable_pw}**')
+
             identifier = identifier + 1
-    """except:
-        log.info('No CSV provided! Cannot create teams')
-        await ctx.send('No CSV provided! Cannot create teams')
-        return"""
+
+    csvfile = StringIO()
+    fieldnames = ['team', 'password']
+
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    for team, password in username_pw_combos.items():
+        writer.writerow({'team': team, 'password': password})
+    csvfile.seek(0)
+
+    buffer = BytesIO()
+    buffer.write(csvfile.getvalue().encode('utf-8'))
+    buffer.seek(0)
+    buffer.name = 'users.csv'
 
     log.info('Finished! Created teams')
-    await ctx.send('Finished! Created teams')
+    await ctx.send('Finished! Created teams', file=discord.File(buffer))
 
 @bot.command(pass_context=True)
 @commands.check_any(commands.has_role("Green Team"), 
@@ -247,6 +259,7 @@ async def request(ctx: commands.context.Context, *args):
     log.info('Command \'request\' invoked. Someone has a GT request.')
     guild = discord.utils.get(bot.guilds, id=guild_id)
     gt_alert_channel = discord.utils.get(guild.text_channels, name='green-team-alert')
+    gt_role = discord.utils.get(guild.roles, name='Green Team')
     competitor_role_re = re.compile(r'^Team\s[a-zA-Z0-9]+$')
     for role in ctx.author.roles:
         if competitor_role_re.match(role.name):
@@ -255,7 +268,7 @@ async def request(ctx: commands.context.Context, *args):
         comp_role = ctx.author.name
 
     if args[0] == 'support':
-        await gt_alert_channel.send(f'Support request for **{comp_role}**!')
+        await gt_alert_channel.send(f'{gt_role.mention} Support request for **{comp_role}**! -> {ctx.channel.mention}')
         await ctx.send('Support request sent! A Green Team member will be with you ASAP')
     
     elif args[0] == 'reset':
@@ -274,7 +287,7 @@ async def request(ctx: commands.context.Context, *args):
             
             if response.content.lower() in ('yes', 'y'):
                 await ctx.send('Box reset request sent! Please hang tight.')
-                await gt_alert_channel.send(f'Box reset request! **{comp_role}** would like a reset on **{args[1]}**')
+                await gt_alert_channel.send(f'{gt_role.mention} Box reset request! **{comp_role}** would like a reset on **{args[1]}**')
             else:
                 await ctx.send('Box reset request cancelled!')
 

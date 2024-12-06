@@ -1,11 +1,12 @@
 import tomllib, tomli_w, csv, json
 from os.path import join, splitext
+from io import TextIOWrapper, BytesIO, StringIO
 
 import requests
 
 from enigma_requests import Box, Credlist, Inject, ParableUser
 
-with open(join('./example_configs/creds', 'examplecreds.csv'), 'r+') as f:
+"""with open(join('./example_configs/creds', 'examplecreds.csv'), 'r+') as f:
     data = csv.reader(f)
     creds = dict()
     for row in data:
@@ -57,13 +58,25 @@ with open(join('./example_configs/injects', 'inject1.toml'), 'rb') as f:
             name=tomlreader['name'],
             config=tomli_w.dumps(tomlreader)
         )
-    ))
+    ))"""
 
-print(ParableUser.add(
-    ParableUser(
-        username='neatteam',
-        identifier=2,
-        permission_level=ParableUser.permissions()['competitor'],
-        password='anotherpw'
-    )
-))
+teams = {
+    'coolteam': 'sdkjfhglkert',
+    'neatteam': 'ywkjhttlkffk',
+    'superteam': 'jkghskjlhkpd'
+}
+
+csvfile = StringIO()
+fieldnames = ['team', 'password']
+
+writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+for team, password in teams.items():
+    writer.writerow({'team': team, 'password': password})
+csvfile.seek(0)
+
+buffer = BytesIO()
+buffer.write(csvfile.getvalue().encode('utf-8'))
+buffer.seek(0)
+buffer.name = 'users.csv'
+
+print(buffer)
