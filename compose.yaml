@@ -1,79 +1,79 @@
 services:
-  enigma:
-    container_name: enigma
-    image: enigma:latest
-    build: ./enigma
-    ports:
-      - "4731:4731"
-    env_file:
-      - ".env"
-    environment:
-      DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
-    volumes:
-      - ./logs:/enigma_engine/logs
-      - ./static:/enigma_engine/static
-    restart: no
-    depends_on:
-      db-enigma:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -X GET http://localhost:4731/ -H 'accept: application/json'"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+  # enigma:
+  #   container_name: enigma
+  #   image: enigma:latest
+  #   build: ./enigma
+  #   ports:
+  #     - "4731:4731"
+  #   env_file:
+  #     - ".env"
+  #   environment:
+  #     DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
+  #   volumes:
+  #     - ./logs:/enigma_engine/logs
+  #     - ./static:/enigma_engine/static
+  #   restart: no
+  #   depends_on:
+  #     db-enigma:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f -X GET http://localhost:4731/ -H 'accept: application/json'"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 30s
 
-  parable:
-    container_name: parable
-    image: parable:latest
-    build: ./parable
-    ports:
-      - "5070:5070"
-    env_file:
-      - ".env"
-    environment:
-      DB_URL: 'enigma-postgres'
-    depends_on:
-      enigma:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -X GET http://localhost:5070/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+  # parable:
+  #   container_name: parable
+  #   image: parable:latest
+  #   build: ./parable
+  #   ports:
+  #     - "5070:5070"
+  #   env_file:
+  #     - ".env"
+  #   environment:
+  #     DB_URL: 'enigma-postgres'
+  #   depends_on:
+  #     enigma:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f -X GET http://localhost:5070/"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 30s
 
-  discord:
-    container_name: enigma-discord
-    image: enigma-bot:latest
-    build: ./enigma_bot
-    env_file:
-      - ".env"
-    environment:
-      API_URL: 'http://enigma:4731/api/'
-    volumes:
-      - ./logs:/enigma_bot/logs:rw
-    restart: no
-    depends_on:
-      enigma:
-        condition: service_healthy
+  # discord:
+  #   container_name: enigma-discord
+  #   image: enigma-bot:latest
+  #   build: ./enigma_bot
+  #   env_file:
+  #     - ".env"
+  #   environment:
+  #     API_URL: 'http://enigma:4731/api/'
+  #   volumes:
+  #     - ./logs:/enigma_bot/logs:rw
+  #   restart: no
+  #   depends_on:
+  #     enigma:
+  #       condition: service_healthy
 
-  proxy:
-    container_name: parable-proxy
-    image: 'nginx-enigma:stable-alpine'
-    build: ./nginx
-    ports:
-      - "80:80"
-    depends_on:
-      parable:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl", "-f", "http://localhost"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-      start_interval: 5s
+  # proxy:
+  #   container_name: parable-proxy
+  #   image: 'nginx-enigma:stable-alpine'
+  #   build: ./nginx
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     parable:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl", "-f", "http://localhost"]
+  #     interval: 1m30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+  #     start_interval: 5s
 
   db-enigma:
     container_name: enigma-postgres

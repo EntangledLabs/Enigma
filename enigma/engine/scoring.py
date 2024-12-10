@@ -4,11 +4,9 @@ from os.path import join
 
 from sqlmodel import Session, select, delete
 
-from engine.util import Box, Inject, Team, Credlist
-from engine.auth import ParableUserTable, get_hash
 from engine.database import db_engine
-from engine.models import *
-from engine.checks import Service
+from enigma.models import *
+from enigma.checks import Service
 from engine import log, static_path
 
 class ScoringEngine():
@@ -37,28 +35,6 @@ class ScoringEngine():
         self.find_credlists()
         self.find_teams()
         self.find_injects()
-
-        try:
-            with Session(db_engine) as session:
-                session.add(
-                    ParableUserTable(
-                        username='admin',
-                        identifier=0,
-                        permission_level=0,
-                        pwhash=get_hash('enigma')
-                    )
-                )
-                session.add(
-                    ParableUserTable(
-                        username='green',
-                        identifier=-1,
-                        permission_level=1,
-                        pwhash=get_hash('parable')
-                    )
-                )
-                session.commit()
-        except:
-            pass
 
         # Verify settings
         if self.check_jitter >= self.check_time:

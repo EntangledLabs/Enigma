@@ -1,5 +1,4 @@
 {
-    "identifier": 2, 
     "ssh": {
         "port": 22, 
         "auth": ["plaintext"], 

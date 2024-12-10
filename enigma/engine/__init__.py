@@ -1,54 +1,39 @@
-import logging
 from os import getenv, getcwd
 from dotenv import load_dotenv
 from os.path import join
 from datetime import datetime
+import re
+from pkgutil import walk_packages
+from importlib import import_module
+import inspect
 
-from uvicorn.config import LOGGING_CONFIG
+import enigma.checks
+from enigma.checks import Service
 
 load_dotenv(override=True)
 
 db_url = getenv('DB_URL')
-
-api_key = getenv('API_KEY')
-api_version = '1.1.0'
-
-secret_key = getenv('ENIGMA_SECRET_KEY')
-access_token_expiration_mins = 30
-
-log = logging.getLogger('uvicorn.error')
 
 logs_path = join(getcwd(), 'logs')
 static_path = join(getcwd(), 'static')
 
 log_file = join(logs_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S')))
 
-with open(log_file, 'w') as f:
-    f.writelines([
-        '++++==== Enigma Scoring Engine Log ====++++\n'
-    ])
+def find_possible_services() -> dict[str: Service]:
+    possible_services = {}
+    enigma_checks = enigma.checks.__path__
+    prefix = enigma.checks.__name__ + '.'
+    service_match = re.compile(r'^[a-zA-Z]+Service$')
+    name_match = re.compile(r'Service$')
 
-log_config = LOGGING_CONFIG
-log_config['formatters'].update({
-    'file': {
-        '()': 'uvicorn.logging.DefaultFormatter',
-        'fmt': '{asctime} {levelprefix} {message}',
-        'datefmt': '%Y-%m-%d %H:%M:%S',
-        'style': '{',
-        'use_colors': False
-    }
-})
-log_config['handlers'].update({
-    'file': {
-        'formatter': 'file',
-        'class': 'logging.FileHandler',
-        'mode': 'a',
-        'filename': log_file
-    }
-})
-log_config['loggers']['uvicorn']['handlers'].append(
-    'file'
-)
-log_config['loggers']['uvicorn.access']['handlers'].append(
-    'file'
-)
+    for importer, modname, ispkg in walk_packages(enigma_checks, prefix=prefix):
+        module = import_module(modname)
+        for name, obj in inspect.getmembers(module):
+            if inspect.isclass(obj) and not service_match.match(name) is None:
+                possible_services.update({
+                    name_match.split(name)[0].lower(): obj
+                })
+    
+    return possible_services
+
+possible_services = find_possible_services()
