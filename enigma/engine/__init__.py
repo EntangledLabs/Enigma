@@ -19,7 +19,7 @@ access_token_expiration_mins = 30
 log = logging.getLogger('uvicorn.error')
 
 logs_path = join(getcwd(), 'logs')
-scores_path = join(getcwd(), 'scores')
+static_path = join(getcwd(), 'static')
 
 log_file = join(logs_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S')))
 

@@ -59,7 +59,7 @@ class RandomService(Service):
     name = 'random'
 
     def __repr__(self):
-        return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__, self.port)
+        return '<{}> which will randomly give you a pass/fail'.format(type(self).__name__)
 
     def __eq__(self, obj):
         if isinstance(obj, RandomService):

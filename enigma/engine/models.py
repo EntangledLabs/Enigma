@@ -42,13 +42,12 @@ class SettingsUpdate(SettingsBase):
 
 # Box
 class BoxBase(SQLModel):
-    name: str = Field(unique=True)
+    name: str = Field(unique=True, primary_key=True)
     identifier: int = Field(ge=1, le=255, unique=True)
     config: str
 
 class BoxTable(BoxBase, table=True):
     __tablename__ = 'boxes'
-    id: int | None = Field(default=None, primary_key=True)
     
 class BoxCreate(BoxBase):
     pass
@@ -63,12 +62,11 @@ class BoxUpdate(BoxBase):
 
 # Credlist
 class CredlistBase(SQLModel):
-    name: str = Field(unique=True)
+    name: str = Field(unique=True, primary_key=True)
     creds: str
 
 class CredlistTable(CredlistBase, table=True):
     __tablename__ = 'credlists'
-    id: int | None = Field(default=None, primary_key=True)
     
 class CredlistCreate(CredlistBase):
     pass
@@ -82,13 +80,12 @@ class CredlistUpdate(CredlistBase):
 
 # Inject
 class InjectBase(SQLModel):
-    num: int = Field(unique=True)
+    num: int = Field(unique=True, primary_key=True)
     name: str = Field(unique=True)
     config: str
 
 class InjectTable(InjectBase, table=True):
     __tablename__ = 'injects'
-    id: int | None = Field(default=None, primary_key=True)
     
 class InjectCreate(InjectBase):
     pass
@@ -103,13 +100,12 @@ class InjectUpdate(InjectBase):
 
 # Team
 class TeamBase(SQLModel):
-    name: str = Field(unique=True)
+    name: str = Field(unique=True, primary_key=True)
     identifier: int = Field(ge=1, le=255, unique=True)
     score: int
 
 class TeamTable(TeamBase, table=True):
     __tablename__ = 'teams'
-    id: int | None = Field(default=None, primary_key=True)
     
 class TeamCreate(TeamBase):
     pass
@@ -125,13 +121,12 @@ class TeamUpdate(TeamBase):
 # Creds
 # API only exposes UG (PCR)
 class TeamCredsBase(SQLModel):
-    name: str = Field(foreign_key='credlists.name')
-    team_id: int = Field(foreign_key='teams.identifier')
+    name: str = Field(foreign_key='credlists.name', primary_key=True)
+    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
     creds: str
 
 class TeamCredsTable(TeamCredsBase, table=True):
     __tablename__ = 'teamcreds'
-    id: int | None = Field(default=None, primary_key=True)
 
 class TeamCredsPublic(TeamCredsBase):
     pass
@@ -146,27 +141,25 @@ class TeamCredsUpdate(TeamCredsBase):
 # SLA reports
 # API only exposes G
 class SLAReportBase(SQLModel):
-    team_id: int = Field(foreign_key='teams.identifier')
-    round: int
+    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
+    round: int = Field(primary_key=True)
     service: str
 
 class SLAReportTable(SLAReportBase, table=True):
     __tablename__ = 'slareports'
-    id: int | None = Field(default=None, primary_key=True)
     
 class SLAReportPublic(SLAReportBase):
     pass
 
 # Inject reports
 class InjectReportBase(SQLModel):
-    team_id: int = Field(foreign_key='teams.identifier')
-    inject_num: int = Field(foreign_key='injects.num')
+    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
+    inject_num: int = Field(foreign_key='injects.num', primary_key=True)
     score: int
     breakdown: str
 
 class InjectReportTable(InjectReportBase, table=True):
     __tablename__ = 'injectreports'
-    id: int | None = Field(default=None, primary_key=True)
 
 class InjectReportCreate(InjectReportBase):
     pass

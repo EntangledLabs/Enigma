@@ -74,13 +74,13 @@ async def init(ctx: commands.context.Context):
     }
     
     for role in guild.roles:
-        if (role.name == f'{comp_name.lower().capitalize()} Competitor'
-            or role.name == f'{comp_name.lower().capitalize()} Developer'):
+        if (role.name == f'{comp_name} Competitor'
+            or role.name == f'{comp_name} Developer'):
             await role.delete()
 
-    comp_role = await guild.create_role(name=f'{comp_name.lower().capitalize()} Competitor', color=discord.Color.purple())
+    comp_role = await guild.create_role(name=f'{comp_name} Competitor', color=discord.Color.purple())
 
-    dev_role = await guild.create_role(name=f'{comp_name.lower().capitalize()} Developer', color=discord.Color.gold())
+    dev_role = await guild.create_role(name=f'{comp_name} Developer', color=discord.Color.gold())
     dev_overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
         guild.me: discord.PermissionOverwrite(read_messages=True),
@@ -103,8 +103,16 @@ async def init(ctx: commands.context.Context):
         director_role: discord.PermissionOverwrite(read_messages=True)
     }
 
+    announcement_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+        guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        gt_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        rt_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        director_role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
+
     comp_cat = await guild.create_category(name=comp_name, overwrites=main_overwrites)
-    await comp_cat.create_text_channel(name='announcements', overwrites=main_overwrites)
+    await comp_cat.create_text_channel(name='announcements', overwrites=announcement_overwrites)
     await comp_cat.create_text_channel(name='general', overwrites=main_overwrites)
     await comp_cat.create_text_channel(name='green-team-alert', overwrites=gt_overwrites)
     await comp_cat.create_text_channel(name='dev-general', overwrites=dev_overwrites)
@@ -127,16 +135,16 @@ async def teardown(ctx: commands.context.Context):
 
     await delete_teams(ctx)
 
-    await discord.utils.get(guild.roles, name=f'{comp_name.lower().capitalize()} Competitor').delete()
-    await discord.utils.get(guild.roles, name=f'{comp_name.lower().capitalize()} Developer').delete()
+    await discord.utils.get(guild.roles, name=f'{comp_name} Competitor').delete()
+    await discord.utils.get(guild.roles, name=f'{comp_name} Developer').delete()
 
     comp_cat = discord.utils.get(guild.categories, name=comp_name)
     for channel in comp_cat.channels:
         await channel.delete()
     await comp_cat.delete()
 
-    log.info(f'Finished! Tore down related objects for \'{comp_name}\'')
-    await ctx.send(f'Finished! Tore down related objects for \'{comp_name}\'')
+    log.info(f'Finished! Tore down related objects for **\'{comp_name}\'**')
+    await ctx.send(f'Finished! Tore down related objects for **\'{comp_name}\'**')
 
 @bot.command(pass_context=True)
 @commands.check_any(commands.has_role("Green Team"), 
@@ -183,7 +191,7 @@ async def create_teams(ctx: commands.context.Context):
                 discord.utils.get(guild.roles, name='Green Team'): discord.PermissionOverwrite(read_messages=True)
             }
 
-            team_cat = await guild.create_category(name=f'{comp_name.lower().capitalize()} {teamname}', overwrites=team_overwrites)
+            team_cat = await guild.create_category(name=f'{comp_name} {teamname}', overwrites=team_overwrites)
             await team_cat.create_text_channel(name='team-chat', overwrites=team_overwrites)
             await team_cat.create_voice_channel(name='team-voice', overwrites=team_overwrites)
             
@@ -191,7 +199,7 @@ async def create_teams(ctx: commands.context.Context):
                 member = discord.utils.get(guild.members, name=teammate)
                 roles = [
                     team_role,
-                    discord.utils.get(guild.roles, name=f'{comp_name.lower().capitalize()} Competitor')
+                    discord.utils.get(guild.roles, name=f'{comp_name} Competitor')
                 ]
                 for role in roles:
                     print(teammate, member, team_role)
@@ -228,7 +236,7 @@ async def delete_teams(ctx: commands.context.Context):
     comp_name = Settings.get().comp_name
 
     competitor_role_re = re.compile(r'^Team\s[a-zA-Z0-9]+$')
-    competitor_cat_re = re.compile(fr'^{comp_name.lower().capitalize()}\s[a-zA-Z0-9]+$')
+    competitor_cat_re = re.compile(fr'^{comp_name}\s[a-zA-Z0-9]+$')
 
     for role in guild.roles:
         if competitor_role_re.match(role.name) is not None:
@@ -251,7 +259,7 @@ async def delete_teams(ctx: commands.context.Context):
 
 # Green team support commands
 @bot.command(pass_context=True)
-@commands.check_any(commands.has_role(f'{Settings.get().comp_name.lower().capitalize()} Competitor'),
+@commands.check_any(commands.has_role(f'{Settings.get().comp_name} Competitor'),
                     commands.has_role("Green Team"), 
                     commands.has_role("Director"), 
                     commands.has_guild_permissions(administrator=True))

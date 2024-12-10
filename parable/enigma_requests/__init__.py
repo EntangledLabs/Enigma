@@ -1,5 +1,5 @@
 from os import getenv
-import tomllib, tomli_w, json
+import tomllib, json
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -48,7 +48,7 @@ def enigma_path(tag: str, index: int=None, num: int=None, specific1=None, specif
 
 def dump_toml(path: str):
     with open(path, 'rb') as f:
-        return tomli_w.dumps(tomllib.load(f))
+        return json.dumps(tomllib.load(f))
     
 # Settings
 class Settings(BaseModel):

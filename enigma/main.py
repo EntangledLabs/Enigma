@@ -5,10 +5,11 @@ from datetime import timedelta
 from typing import Annotated
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select, delete
 import uvicorn
 
-from engine.database import init_db, get_session, db_engine
+from engine.database import init_db, get_session, del_db
 from engine.scoring import ScoringEngine
 from engine.util import FileConfigLoader
 from engine import log_config, api_version
@@ -25,7 +26,7 @@ from engine.auth import (
     get_hash
 )
 from engine.models import *
-from engine import log, access_token_expiration_mins
+from engine import log, access_token_expiration_mins, static_path
 
 # Initialize the DB
 log.info('Initializing DB')
@@ -112,7 +113,7 @@ async def update_teams():
     if se.enginelock:
         raise HTTPException(status_code=423, detail='Cannot update teams, Enigma is running')
     log.info('Updating teams in Enigma')
-    se.teams = se.find_teams()
+    se.find_teams()
     return {'ok': True}
 
 @engine_router.post('/pause')
@@ -151,6 +152,23 @@ async def clean_tables(*, session: Session = Depends(get_session)):
     session.exec(delete(ScoreReportTable))
     session.exec(delete(ParableUserTable))
     session.commit()
+    return {'ok': True}
+
+@engine_router.post('/hard-reset')
+async def hard_reset():
+    del_db()
+    await asyncio.sleep(2)
+    init_db()
+    FileConfigLoader.load_api_key()
+    return {'ok': True}
+
+@engine_router.post('/reset-data')
+async def reset_comp_data(*, session: Session = Depends(get_session)):
+    session.exec(delete(SLAReportTable))
+    session.exec(delete(InjectReportTable))
+    session.exec(delete(ScoreReportTable))
+    session.commit()
+    se.reset_scores()
     return {'ok': True}
 
 @engine_router.get('/')
@@ -333,6 +351,7 @@ async def add_team(*, session: Session = Depends(get_session), team: TeamCreate)
     except:
         raise HTTPException(status_code=400, detail='Cannot add team with non-unique properties!')
     session.refresh(db_team)
+    se.find_teams()
     return db_team
 
 @team_router.get('/', response_model=list[TeamPublic])
@@ -370,6 +389,7 @@ async def delete_team(*, session: Session = Depends(get_session), team_id: int):
         raise HTTPException(status_code=404, detail='Team not found')
     session.delete(team)
     session.commit()
+    se.find_teams()
     return {'ok': True}
 
 
@@ -567,6 +587,8 @@ async def delete_credlist(*, session: Session = Depends(get_session), username: 
 log.info('Initializing Enigma')
 app = FastAPI(title='Enigma Scoring Engine', summary='Created by Entangled', api_version=api_version)
 
+app.mount('/static', StaticFiles(directory=static_path), name='static')
+
 app.include_router(user_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(settings_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(engine_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
@@ -578,6 +600,7 @@ app.include_router(injects_router, prefix=f'/api/v{api_version}', dependencies=[
 app.include_router(team_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 
 # Adding report routers
+app.include_router(teamcreds_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(sla_report_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(inject_report_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])
 app.include_router(score_report_router, prefix=f'/api/v{api_version}', dependencies=[Depends(api_key_auth)])

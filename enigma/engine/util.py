@@ -9,7 +9,7 @@ from engine.checks import Service
 from engine.models import InjectReportTable, SLAReportTable, ScoreReportTable, Settings
 from engine.models import TeamCredsTable, TeamTable
 from engine.auth import APIKey
-from engine import api_key
+from engine import api_key, static_path
 
 ###################################################
 # Class Box
@@ -158,7 +158,7 @@ class Inject():
     def new(cls, num: int, data: str):
         data = json.loads(data)
         inject = cls(
-            num=num,
+            id=num,
             name=data['name'],
             desc=data['description'],
             worth=data['worth'],
@@ -194,14 +194,14 @@ class Team():
                         creds=json.dumps(credlist.creds)
                     )
                 )
-            session.commit()
+                session.commit()
+
 
     def __repr__(self):
-        return '<{}> with team id {}, scores object {}, and credlist with {}'.format(
+        return '<{}> with team id {} and total score {}'.format(
             type(self).__name__,
-            self.id,
-            self.scores['total_score'],
-            self.credlists
+            self.identifier,
+            self.total_scores['total_score']
         )
     
     #######################
@@ -214,6 +214,7 @@ class Team():
     def tabulate_scores(self, round: int, reports: dict):
         # Service check tabulation
         for service, result in reports.items():
+            print(reports)
             if result:
                 # Service check is successful, awards points
                 self.award_service_points(service)
@@ -428,12 +429,14 @@ class Team():
         with Session(db_engine) as session:
             chosen_list = json.loads(
                 session.exec(
-                    select(TeamCredsTable).where(
+                    select(
+                        TeamCredsTable
+                    ).where(
                         TeamCredsTable.name == random.choice(credlists)
                     ).where(
                         TeamCredsTable.team_id == self.identifier
                     )
-                ).all()[0].creds
+                ).first().creds
             )
         chosen = random.choice(list(chosen_list.items()))
         choice = {

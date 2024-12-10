@@ -20,6 +20,8 @@ build/
 *.log
 
 enigma/scores/*.csv
+static/*.csv
+static/*.txt
 
 .VSCodeCounter/
 

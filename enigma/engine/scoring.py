@@ -1,14 +1,15 @@
 import random, json
 import asyncio
+from os.path import join
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from engine.util import Box, Inject, Team, Credlist
 from engine.auth import ParableUserTable, get_hash
 from engine.database import db_engine
 from engine.models import *
 from engine.checks import Service
-from engine import log, scores_path
+from engine import log, static_path
 
 class ScoringEngine():
     
@@ -21,12 +22,6 @@ class ScoringEngine():
 
         # Initialize environment information
         with Session(db_engine) as session:
-            self.name = session.exec(select(Settings)).one().comp_name
-            self.boxes = self.find_boxes()
-            self.services = Box.full_service_list(self.boxes)
-            self.credlists = self.find_credlists()
-            self.teams = self.find_teams()
-
             self.check_time = session.exec(select(Settings)).one().check_time
             self.check_jitter = session.exec(select(Settings)).one().check_jitter
             self.check_timeout = session.exec(select(Settings)).one().check_timeout
@@ -36,6 +31,12 @@ class ScoringEngine():
             self.sla_penalty = session.exec(select(Settings)).one().sla_penalty
 
             self.environment = session.exec(select(Settings)).one().first_octets
+        
+        self.find_boxes()
+        self.services = Box.full_service_list(self.boxes)
+        self.find_credlists()
+        self.find_teams()
+        self.find_injects()
 
         try:
             with Session(db_engine) as session:
@@ -70,25 +71,47 @@ class ScoringEngine():
 
     async def run(self, total_rounds: int=0):
         self.enginelock = True
+        with Session(db_engine) as session:
+            self.name = session.exec(select(Settings)).one().comp_name
+
+        self.print_comp_info()
+
+        log.info(f'++== {self.name} ==++')
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
             log.info('Round {}'.format(self.round))
+
             if self.pause:
                 log.info('Pausing scoring')
             while self.pause:
                 await asyncio.sleep(0.1)
+
             log.info('Starting scoring')
-            self.boxes = self.find_boxes()
+
+            self.find_boxes()
             self.services = Box.full_service_list(self.boxes)
-            await self.score_services(self.round)
+            self.find_injects()
+
+            await asyncio.wait(
+                [asyncio.create_task(
+                    self.score_services(self.round)
+                )],
+                return_when=asyncio.ALL_COMPLETED
+            )
+
             log.info('Round {} done! Waiting for next round start...'.format(self.round))
-            self.round = self.round + 1
+
             wait_time = self.check_time + random.randint(-self.check_jitter, self.check_jitter)
+            self.export_all_as_csv('{}' + f'_{self.round}_scores')
             await asyncio.sleep(wait_time)
+            self.round = self.round + 1
+
         log.info('Stopping scoring!')
+
         self.stop = False
         self.enginelock = False
+
         log.info('Exporting CSVs with competitor data')
-        #self.export_all_as_csv()
+        self.export_all_as_csv('{}_final_scores')
 
     # Score check methods
 
@@ -106,6 +129,7 @@ class ScoringEngine():
         # tired of keeping track of nested data structures
         # score_checks = dict['service': dict[]]
         # second dict = {'func': scoring function, 'check_data': list[check data]}
+        print(f'#1 score services called round {round}')
         score_checks = dict()
         for box in self.boxes:
             for service in box.services:
@@ -130,6 +154,7 @@ class ScoringEngine():
                     service_name: score_check_info
                 })
 
+        print(f'#2 making presumed guilty check results round {round}')
         # Creates a dict with presumed guilty check results
         # once again tired of data structures
         # reports = dict[team id: dict[service: result]]
@@ -148,14 +173,31 @@ class ScoringEngine():
                         service: False
                     })
 
-        results = await self.run_score_checks(score_checks, self.teams, self.services)
-        
+        print(f'#3 running score checks round {round}')
+        finished, pending = await asyncio.wait([
+                asyncio.create_task(
+                    self.run_score_checks(score_checks, self.teams, self.services)
+                )
+            ],
+            return_when=asyncio.ALL_COMPLETED
+        )
+
+        print(len(finished))
+        print(finished)
+
+        results = finished.pop().result()
+
+        print(results)
+
+        print(f'#4 writing reports round {round}')
         for result in results:
             reports[result[0]][result[1]] = True
 
         for team_id, team in self.teams.items():
+            print(team)
             team.tabulate_scores(round, reports[team_id])
 
+        print(f'#5 done scoring services round {round}')
     # Creates a dict of data important to scoring
     # each check data consists of the following:
     # {
@@ -202,14 +244,23 @@ class ScoringEngine():
                     task.cancel()
         
         return results
+    
+    def reset_scores(self):
+        with Session(db_engine) as session:
+            teams = session.exec(select(TeamTable)).all()
+            for team in teams:
+                team.score = 0
+                session.add(team)
+                session.commit()
+        self.find_teams()
 
     # Find/create methods for relevant competition data
 
-    def export_all_as_csv(self):
+    def export_all_as_csv(self, fmt: str):
         for team_id, team in self.teams.items():
-            team.export_scores_csv('{}_scores'.format(team.name), scores_path)
+            team.export_scores_csv(fmt.format(team.name), static_path)
 
-    def find_boxes(self) -> list[Box]:
+    def find_boxes(self):
         boxes = list()
         with Session(db_engine) as session:
             db_boxes = session.exec(select(BoxTable)).all()
@@ -217,9 +268,9 @@ class ScoringEngine():
                 boxes.append(
                     Box.new(db_box.name, db_box.config)
                 )
-        return boxes
+        self.boxes = boxes
 
-    def find_credlists(self) -> list[Credlist]:
+    def find_credlists(self):
         credlists = list()
         with Session(db_engine) as session:
             db_credlists = session.exec(select(CredlistTable)).all()
@@ -230,11 +281,13 @@ class ScoringEngine():
                     'creds': json.loads(db_credlist.creds)
                 })
             )
-        return credlists
+        self.credlists = credlists
 
-    def find_teams(self) -> dict[int: Team]:
+    def find_teams(self):
         teams = dict()
         with Session(db_engine) as session:
+            session.exec(delete(TeamCredsTable))
+            session.commit()
             db_teams = session.exec(select(TeamTable)).all()
         for db_team in db_teams:
             teams.update({
@@ -248,7 +301,7 @@ class ScoringEngine():
                 )
             })
         self.teams_detected = True if len(teams) != 0 else False
-        return teams
+        self.teams = teams
 
     def find_injects(self) -> list[Inject]:
         injects = list()
@@ -258,7 +311,82 @@ class ScoringEngine():
             injects.append(
                 Inject.new(db_inject.num, db_inject.config)
             )
-        return injects
+        self.injects = injects
+
+    # Creates a human-readable version of the entire competition configuration
+    def print_comp_info(self):
+        filename = f'{self.name}_enigma_info.txt'
+        with open(join(static_path, filename), 'w+') as f:
+            with Session(db_engine) as session:
+                settings = session.exec(select(Settings)).one()
+            f.writelines([
+                '++++==== Enigma Scoring Engine Configuration ====++++\n',
+                f'Competition name: {settings.comp_name}\n\n'
+            ])
+
+            f.writelines([
+                '++++==== Competition Settings ====++++\n',
+                f'Competitor information level: {settings.competitor_info}\n',
+                f'PCR portal active: {settings.pcr_portal}\n',
+                f'Inject portal active: {settings.inject_portal}\n\n',
+                f'Time between service checks: {settings.check_time} seconds\n',
+                f'Check jitter: {settings.check_jitter} seconds\n',
+                f'Service check timeout: {settings.check_timeout} seconds\n\n',
+                f'Points awarded per successful service check: {settings.check_points} points\n',
+                f'Number of checks failed to incur SLA: {settings.sla_requirement} checks\n',
+                f'Points deducted per SLA violation: {settings.sla_penalty} points\n\n',
+                f'Pod network octets: {settings.first_octets}\n',
+                f'First pod identifying octet: {settings.first_pod_third_octet}\n\n'
+            ])
+
+            for box in self.boxes:
+                f.writelines([
+                    '++++==== Box Info ====++++\n',
+                    f'Box name: {box.name}\n',
+                    f'Box identifying octet: {box.identifier}\n\n'
+                ])
+                for service in box.services:
+                    f.writelines([
+                        '---- Service Info ----\n',
+                        f'Service type: {service.name}\n'
+                    ])
+                    if hasattr(service, 'port'):
+                        f.write(
+                            f'Port: {service.port}\n'
+                        )
+                    if hasattr(service, 'auth'):
+                        f.write(
+                            f'Auth types: {', '.join(auth for auth in service.auth)}\n'
+                        )
+                    if hasattr(service, 'keyfile'):
+                        f.write(
+                            f'Keyfile: {service.keyfile}\n'
+                        )
+                    if hasattr(service, 'path'):
+                        f.write(
+                            f'Check path: {service.path}\n'
+                        )
+                f.write('\n')
+
+            for credlist in self.credlists:
+                f.writelines([
+                    '++++==== Credlist Info ====++++\n',
+                    f'Credlist name: {credlist.name}\n\n'
+                ])
+                for user, password in credlist.creds.items():
+                    f.write(
+                        f'{user}: {password}\n'
+                    )
+                f.write('\n')
+
+            for inject in self.injects:
+                f.writelines([
+                    '++++==== Inject Info ====++++\n',
+                    f'Inject name: {inject.name}\n',
+                    f'Inject number: {inject.id}\n'
+                ])
+
+
   
 class TestScoringEngine(ScoringEngine):
     
