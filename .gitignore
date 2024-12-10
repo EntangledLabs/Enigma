@@ -13,6 +13,8 @@ dist/
 build/
 *.egg-info/
 
+.idea/
+
 *.env
 
 *.db

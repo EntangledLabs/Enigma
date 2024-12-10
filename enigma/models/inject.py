@@ -123,7 +123,7 @@ class InjectReport(SQLModel, table=True):
     breakdown: str
 
     @classmethod
-    def get_report(cls, team_id: int, inject_num: int):
+    def get_report(cls, team_id: int, inject_num: int) -> tuple[int, dict]:
         with Session(db_engine) as session:
             db_report = session.exec(
                 select(
@@ -135,3 +135,15 @@ class InjectReport(SQLModel, table=True):
                 )
             ).one()
             return (db_report.score, json.loads(db_report.breakdown))
+
+    @classmethod
+    def get_all_team_reports(cls, team_id: int)-> list[tuple[int, int]]:
+        with Session(db_engine) as session:
+            db_reports = session.exec(
+                select(
+                    InjectReport
+                ).where(
+                    InjectReport.team_id == team_id
+                )
+            ).all()
+            return [(db_report.inject_num, db_report.score) for db_report in db_reports]

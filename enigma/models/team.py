@@ -19,7 +19,7 @@ class TeamDB(SQLModel, table=True):
     identifier: int = Field(ge=1, le=255, unique=True)
     score: int
 
-class Team():
+class Team:
 
     def __init__(self, name: str, identifier: int, services: list[str], credlists: list[Credlist]):
         self.name = name
@@ -30,8 +30,8 @@ class Team():
             'penalty_score': 0
         }
         self.scores = dict.fromkeys(services, 0)
-        self.penalty_scores = {}
-        self.sla_tracker = {}
+        self.penalty_scores = dict.fromkeys(services, 0)
+        self.sla_tracker = dict.fromkeys(services, 0)
 
         with Session(db_engine) as session:
             for credlist in credlists:
@@ -55,15 +55,17 @@ class Team():
     #######################
     # Scoring methods
 
-
     # Gathers all score reports for a round
     # This should be called at the end of every round
     # Gets passed a dict[service: result]
-    def tabulate_scores(self, round: int, reports: dict):
+    def tabulate_scores(self, round: int, reports: dict[str: tuple[bool, str]]):
+        msgs = {}
         # Service check tabulation
         for service, result in reports.items():
-            print(reports)
-            if result:
+            msgs.update({
+                service: result[1]
+            })
+            if result[0]:
                 # Service check is successful, awards points
                 self.award_service_points(service)
                 if service in self.sla_tracker:
@@ -77,48 +79,22 @@ class Team():
                     })
                 else:
                     # Previous SLA violating tracking is found, determining if SLA threshold is met
-                    with Session(db_engine) as session:
-                        if self.sla_tracker.get(service) == Settings.get_setting('sla_requirement') - 1:
-                            # Full SLA violation, creating SLA report and deducting points
-                            self.award_sla_penalty(service)
-                            self.sla_tracker.pop(service)
-                            session.add(
-                                SLAReport(
-                                    team_id = self.identifier,
-                                    round = round,
-                                    service = service
-                                )
-                            )
-                            session.commit()
-                        else:
-                            # Threshold not met, extending SLA tracker
-                            self.sla_tracker.update({
-                                service: self.sla_tracker.pop(service) + 1
-                            })
+                    if self.sla_tracker.get(service) >= Settings.get_setting('sla_requirement') - 1:
+                        # Full SLA violation, creating SLA report and deducting points
+                        self.award_sla_penalty(service)
+                        self.sla_tracker.pop(service)
+                        SLAReport.add_to_db(self.identifier, round, service)
+                    else:
+                        # Threshold not met, extending SLA tracker
+                        self.sla_tracker[service] = self.sla_tracker[service] + 1
 
         # Inject tabulation
-        with Session(db_engine) as session:
-            inject_reports = session.exec(
-                select(InjectReport).where(
-                    InjectReport.team_id == self.identifier
-                )
-            ).all()
+        inject_reports = InjectReport.get_all_team_reports(self.identifier)
         for inject in inject_reports:
-            if f'inject{inject.inject_num}' in self.scores and self.scores[f'inject{inject.inject_num}'] == inject.score:
-                continue
-            else:
-                self.award_inject_points(inject.inject_num, inject.score)
+            self.award_inject_points(inject[0], inject[1])
 
         # Publish score report
-        with Session(db_engine) as session:
-            session.add(
-                ScoreReport(
-                    team_id = self.identifier,
-                    round = round,
-                    score = self.total_scores['total_score']
-                )
-            )
-            session.commit()
+        ScoreReport.add_to_db(self.identifier, round, self.total_scores['total_score'], msgs)
 
     # Updates total score
     def update_total(self):
@@ -135,7 +111,9 @@ class Team():
         self.total_scores['total_score'] = self.total_scores['raw_score'] - self.total_scores['penalty_score']
         with Session(db_engine) as session:
             session.exec(
-                select(TeamDB).where(
+                select(
+                    TeamDB
+                ).where(
                     TeamDB.identifier == self.identifier
                 )
             ).one().score = self.total_scores['total_score']
@@ -143,8 +121,6 @@ class Team():
 
     # Service adding/removal
     def add_service(self, name: str):
-        if name in self.scores.keys():
-            return
         self.scores.update({
             name: 0
         })
@@ -158,11 +134,10 @@ class Team():
     # Point awarding
     def award_service_points(self, service: str):
         if service not in self.scores.keys():
-            return
-        with Session(db_engine) as session:
-            self.scores.update({
-                service: (self.scores.pop(service) + session.exec(select(Settings)).one().check_points)
-            })
+            self.add_service(service)
+        self.scores.update({
+            service: (self.scores.pop(service) + Settings.get_setting('check_points'))
+        })
         self.update_total()
 
     def award_inject_points(self, inject_num: int, points: int):
@@ -178,12 +153,12 @@ class Team():
         if sla_str not in self.penalty_scores.keys():
             with Session(db_engine) as session:
                 self.penalty_scores.update({
-                    sla_str: session.exec(select(Settings)).one().sla_penalty
+                    sla_str: Settings.get_setting('sla_penalty')
                 })
         else:
             with Session(db_engine) as session:
                 self.penalty_scores.update({
-                    sla_str: (self.penalty_scores.pop(sla_str) + session.exec(select(Settings)).one().sla_penalty)
+                    sla_str: (self.penalty_scores.pop(sla_str) + Settings.get_setting('sla_penalty'))
                 })
         self.update_total()
 
@@ -243,34 +218,6 @@ class Team():
     #######################
     # Creds methods
 
-    # Returns a dict with all of the creds
-    # Mostly used for debugging
-    def get_all_creds(self) -> dict:
-        with Session(db_engine) as session:
-            data = session.exec(
-                select(TeamCreds).where(
-                    TeamCreds.team_id == self.identifier
-                )
-            ).all()
-        credslist = dict()
-        for creds in data:
-            credslist.update({
-                creds.name: json.loads(creds.creds)
-            })
-        return credslist
-
-    # Adds a new credslist
-    def add_creds(self, credslist: dict):
-        with Session(db_engine) as session:
-            session.add(
-                TeamCreds(
-                    name = credslist.items()[0].keys()[0],
-                    team_id = self.identifier,
-                    creds = credslist.items()[0].keys()[1]
-                )
-            )
-            session.commit()
-
     # Returns a random user and password for use in service check
     # Parameter credlists is a list of names of the credlists to choose from
     def get_random_cred(self, credlists: list[str]) -> dict:
@@ -284,7 +231,7 @@ class Team():
                     ).where(
                         TeamCreds.team_id == self.identifier
                     )
-                ).first().creds
+                ).one().creds
             )
         chosen = random.choice(list(chosen_list.items()))
         choice = {

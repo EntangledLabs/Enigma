@@ -8,15 +8,15 @@ from enigma.engine.database import init_db, del_db
 from enigma.engine import possible_services
 
 
-del_db()
-init_db()
+test_dict_1 = {}
+test_dict_2 = {}
 
-print(possible_services)
+print(test_dict_1)
+print(test_dict_2)
 
-file_path = join('./example_configs/boxes', 'examplebox.json')
-with open(file_path, 'r+') as f:
-    data = json.load(f)
-    print(data)
-    box = Box(name='examplebox', identifier=data['identifier'], service_config=data['services'])
-    print(box)
-    print(box.services)
+test_dict_1.update({
+    'test1': 'test2'
+})
+
+print(test_dict_1)
+print(test_dict_2)
