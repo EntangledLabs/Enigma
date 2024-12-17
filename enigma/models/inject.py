@@ -3,6 +3,8 @@ import json
 from sqlmodel import SQLModel, Field, Session, select
 
 from enigma.engine.database import db_engine
+from enigma.enigma_logger import log
+
 
 # Inject
 class InjectDB(SQLModel, table=True):
@@ -14,7 +16,7 @@ class InjectDB(SQLModel, table=True):
     path: str | None = None
     rubric: str
 
-class Inject():
+class Inject:
 
     def __init__(self, id: int, name: str, desc: str, worth: int, path: str | None, rubric: dict):
         self.id = id
@@ -24,12 +26,14 @@ class Inject():
         self.path = path
         self.rubric = rubric
         self.breakdown = self.calculate_score_breakdown()
+        log.debug(f"Created new Inject with name {self.name}")
 
     def __repr__(self):
         return '<{}> with id {} and name {}'.format(type(self).__name__, self.id, self.name)
 
     # Calculates the corresponding scores for each scoring category and scoring option
     def calculate_score_breakdown(self):
+        log.debug(f"Calculating score breakdown for Inject {self.name}")
         breakdown = dict()
         for key in self.rubric.keys():
             weight = self.worth * self.rubric[key]['weight']
@@ -43,9 +47,13 @@ class Inject():
                 key: possible_cat_scores
             })
         return breakdown
-    
+
+    #######################
+    # DB fetch/add
+
     # Tries to add the inject object to the DB. If exists, it will return False, else True
     def add_to_db(self):
+        log.debug(f"Adding Inject {self.name} to database")
         try:
             with Session(db_engine) as session:
                 session.add(
@@ -61,31 +69,13 @@ class Inject():
                 session.commit()
                 return True
         except:
-            return False
-        
-    # Updates the DB object. If it fails, it returns False, else True
-    def update_in_db(self):
-        inject_db = InjectDB(
-                        id=self.id,
-                        name=self.name,
-                        desc=self.desc,
-                        worth=self.worth,
-                        path=self.path,
-                        rubric=json.dumps(self.rubric)
-                    )
-        try:
-            with Session(db_engine) as session:
-                db_inject = session.exec(select(InjectDB).where(InjectDB.id == self.id)).one()
-                db_inject.sqlmodel_update(inject_db)
-                session.add(db_inject)
-                session.commit()
-            return True
-        except:
+            log.warning(f"Failed to add Inject {self.name} to database!")
             return False
 
     # Fetches all Inject from the DB
     @classmethod
     def find_all(cls):
+        log.debug(f"Finding all Injects")
         injects = []
         with Session(db_engine) as session:
             db_injects = session.exec(select(InjectDB)).all()
@@ -105,6 +95,7 @@ class Inject():
     # Creates an Inject object based off of DB data
     @classmethod
     def new(cls, id: int, name: str, desc: str, worth: int, path: str | None, rubric: str):
+        log.debug(f"Creating new Inject {name}")
         return cls(
             id=id,
             name=name,
@@ -118,12 +109,16 @@ class Inject():
 class InjectReport(SQLModel, table=True):
     __tablename__ = 'injectreports'
     team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
-    inject_num: int = Field(foreign_key='injects.num', primary_key=True)
+    inject_num: int = Field(foreign_key='injects.id', primary_key=True)
     score: int
     breakdown: str
 
+    #######################
+    # DB fetch/add
+
     @classmethod
     def get_report(cls, team_id: int, inject_num: int) -> tuple[int, dict]:
+        log.debug(f"Finding InjectReport for team {team_id} with inject number {inject_num}")
         with Session(db_engine) as session:
             db_report = session.exec(
                 select(
@@ -138,6 +133,7 @@ class InjectReport(SQLModel, table=True):
 
     @classmethod
     def get_all_team_reports(cls, team_id: int)-> list[tuple[int, int]]:
+        log.debug(f"Finding all InjectReport for team {team_id}")
         with Session(db_engine) as session:
             db_reports = session.exec(
                 select(

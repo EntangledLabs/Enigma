@@ -1,8 +1,18 @@
 import logging
+from os import getenv, getcwd
+from os.path import join
+from datetime import datetime
 
-from enigma.engine import log_file
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 #### Creates a universal logger for Enigma
+
+log_level = getenv('LOG_LEVEL')
+logs_path = join(getcwd(), 'logs')
+
+log_file = join(logs_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S')))
 
 # Writing a header to the log file because it looks better
 def write_log_header():
@@ -13,7 +23,7 @@ def write_log_header():
 
 # Creating the logger
 log = logging.getLogger('enigma')
-log.setLevel(logging.DEBUG)
+log.setLevel(log_level)
 
 # Log format
 log_format = logging.Formatter(

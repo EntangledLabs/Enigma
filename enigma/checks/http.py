@@ -1,7 +1,8 @@
-import asyncio, random
+import random
+import time
 
 from enigma.checks import Service
-from enigma.engine.logging import log
+from enigma.enigma_logger import log
 
 # Performs a simple HTTP check
 # If an HTTP GET request is OK, the check passes
@@ -27,19 +28,14 @@ class HTTPService(Service):
                     return True
         return False
 
-    async def conduct_service_check(self, data: dict):
+    def conduct_service_check(self, addr: str) -> tuple[bool, str]:
         # TODO: make it not random
         log.warning('Check is not fully implemented! Results are random')
         log.info('Conducting http service check')
-        await asyncio.sleep(random.randint(1,10))
+        time.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        if result:
-            return (
-                data['team'],
-                data['service'],
-                'message'
-            )
-        return
+        return result, 'randomly generated message'
+
     @classmethod
     def new(cls, data: dict):
         return cls(
@@ -71,19 +67,14 @@ class HTTPSService(Service):
                     return True
         return False
 
-    async def conduct_service_check(self, data: dict):
+    def conduct_service_check(self, addr: str) -> tuple[bool, str]:
         # TODO: make it not random
         log.warning('Check is not fully implemented! Results are random')
         log.info('Conducting https service check')
-        await asyncio.sleep(random.randint(1,10))
+        time.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        if result:
-            return (
-                data['team'],
-                data['service'],
-                'message'
-            )
-        return
+        return result, 'randomly generated message'
+
     @classmethod
     def new(cls, data: dict):
         return cls(

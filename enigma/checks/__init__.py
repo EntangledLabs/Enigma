@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 class Service(ABC):
 
     # Attribute name should be the name of the service
-    # name = 'service'
+    name = 'service'
 
     # The __init__ must contain the specified parameters for the service
     # __init__ should test the parameters for proper use and raise a log.critical() if something isn't right
@@ -35,7 +35,7 @@ class Service(ABC):
     # e.x. If Team01 has identifier '32', and an SSHService is configured on Box 'examplebox' with host octet 5,
     #      then the worker process will target 172.16.32.5
     @abstractmethod
-    async def conduct_service_check(self, **kwargs):
+    def conduct_service_check(self, addr: str) -> tuple[bool, str]:
         pass
     
     # Service.new(data) is called to create a new Service object with all of the proper parameters assigned

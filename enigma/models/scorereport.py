@@ -1,7 +1,6 @@
-import json
+from sqlmodel import SQLModel, Field, Session
 
-from sqlmodel import SQLModel, Field, Session, select
-
+from enigma.enigma_logger import log
 from enigma.engine.database import db_engine
 
 # Score reports
@@ -13,15 +12,13 @@ class ScoreReport(SQLModel, table=True):
     score: int
     msg: str
 
-    @classmethod
-    def add_to_db(cls, team_id: int, round: int, score: int, msgs: dict):
+    #######################
+    # DB fetch/add
+
+    def add_to_db(self):
+        log.debug(f'Adding score report to database for team {self.team_id} during round {self.round}')
         with Session(db_engine) as session:
             session.add(
-                ScoreReport(
-                    team_id=team_id,
-                    round=round,
-                    score=score,
-                    msg=json.dumps(msgs)
-                )
+                self
             )
             session.commit()

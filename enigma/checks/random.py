@@ -1,7 +1,8 @@
-import asyncio, random
+import random
+import time
 
 from enigma.checks import Service
-from enigma.engine.logging import log
+from enigma.enigma_logger import log
 
 # Performs a random check
 class RandomService(Service):
@@ -16,17 +17,11 @@ class RandomService(Service):
             return True
         return False
 
-    async def conduct_service_check(self, data: dict):
+    def conduct_service_check(self, addr: str) -> tuple[bool, str]:
         log.info('Conducting Random service check')
-        await asyncio.sleep(random.randint(1,10))
+        time.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        if result:
-            return (
-                data['team'],
-                data['service'],
-                'message'
-            )
-        return
+        return (result, 'randomly generated message')
     
     @classmethod
     def new(cls, data: dict):

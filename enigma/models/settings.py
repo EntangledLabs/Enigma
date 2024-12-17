@@ -1,8 +1,8 @@
-import json
-
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import SQLModel, Field, Session, select, delete
 
 from enigma.engine.database import db_engine
+from enigma.enigma_logger import log
+
 
 # Settings
 class Settings(SQLModel, table=True):
@@ -22,8 +22,22 @@ class Settings(SQLModel, table=True):
     first_octets: str = Field(nullable=False)
     first_pod_third_octet: int = Field(default=1, ge=1, le=255)
 
+    #######################
+    # DB fetch/add
+    def add_to_db(self):
+        log.debug(f'Adding settings to database')
+        with Session(db_engine) as session:
+            session.exec(delete(Settings))
+            session.commit()
+
+            session.add(
+                self
+            )
+            session.commit()
+
     @classmethod
     def get_setting(cls, key: str):
+        log.debug(f'Locating setting: {key}')
         with Session(db_engine) as session:
             settings = session.exec(select(Settings)).one()
-            return settings[key]
+            return getattr(settings, key)

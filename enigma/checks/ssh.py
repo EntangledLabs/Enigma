@@ -1,7 +1,8 @@
-import asyncio, random
+import random
+import time
 
 from enigma.checks import Service
-from enigma.engine.logging import log
+from enigma.enigma_logger import log
 
 # Performs a simple SSH connection service check
 # If a connection is established, the check passes
@@ -38,19 +39,13 @@ class SSHService(Service):
                         return True
         return False
 
-    async def conduct_service_check(self, data: dict):
+    def conduct_service_check(self, addr: str) -> tuple[bool, str]:
         # TODO: make it not random
         log.warning('Check is not fully implemented! Results are random')
         log.info('Conducting ssh service check')
-        await asyncio.sleep(random.randint(1,10))
+        time.sleep(random.randint(1,10))
         result = random.choice([True, False])
-        if result:
-            return (
-                data['team'],
-                data['service'],
-                'message'
-            )
-        return
+        return result, 'randomly generated message'
 
     @classmethod
     def new(cls, data: dict):
