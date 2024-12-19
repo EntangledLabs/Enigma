@@ -1,21 +1,16 @@
 import json
 
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import Session, select
 
 from enigma.checks import Service
 
 from enigma import possible_services
 from enigma.engine.database import db_engine
-from enigma.enigma_logger import log
+from enigma.logger import log
 
+from db_models import BoxDB
 
 # Box
-class BoxDB(SQLModel, table = True):
-    __tablename__ = 'boxes'
-    name: str = Field(primary_key=True)
-    identifier: int = Field(ge=1, le=255, unique=True)
-    service_config: str
-
 class Box:
 
     def __init__(self, name: str, identifier: int, service_config: dict):

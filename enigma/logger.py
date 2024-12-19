@@ -1,7 +1,6 @@
 import logging
 from os import getenv, getcwd
 from os.path import join
-from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -12,7 +11,7 @@ load_dotenv(override=True)
 log_level = getenv('LOG_LEVEL')
 logs_path = join(getcwd(), 'logs')
 
-log_file = join(logs_path, 'enigma_{}.log'.format(datetime.now().strftime('%d_%m_%H_%M_%S')))
+log_file = join(logs_path, 'enigma.log')
 
 # Writing a header to the log file because it looks better
 def write_log_header():

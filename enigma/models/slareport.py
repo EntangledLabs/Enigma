@@ -1,15 +1,17 @@
-from sqlmodel import SQLModel, Field, Session
+from sqlmodel import Session
 
-from enigma.enigma_logger import log
+from enigma.logger import log
 from enigma.engine.database import db_engine
 
-# SLA Report
-class SLAReport(SQLModel, table=True):
-    __tablename__ = 'slareports'
+from db_models import SLAReportDB
 
-    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
-    round: int = Field(primary_key=True)
-    service: str = Field(primary_key=True)
+# SLA Report
+class SLAReport:
+
+    def __init__(self, team_id: int, round: int, service: str):
+        self.team_id = team_id
+        self.round = round
+        self.service = service
 
     #######################
     # DB fetch/add
@@ -18,6 +20,10 @@ class SLAReport(SQLModel, table=True):
         log.debug(f'Adding SLAReport for team {self.team_id} during round {self.round}')
         with Session(db_engine) as session:
             session.add(
-                self
+                SLAReportDB(
+                    team_id=self.team_id,
+                    round=self.round,
+                    service=self.service
+                )
             )
             session.commit()

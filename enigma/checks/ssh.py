@@ -2,7 +2,7 @@ import random
 import time
 
 from enigma.checks import Service
-from enigma.enigma_logger import log
+from enigma.logger import log
 
 # Performs a simple SSH connection service check
 # If a connection is established, the check passes

@@ -2,9 +2,9 @@ import json, csv
 import random
 from os.path import join
 
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import Session, select
 
-from enigma.enigma_logger import log
+from enigma.logger import log
 from enigma.engine.database import db_engine
 from enigma.models.credlist import Credlist, TeamCreds
 from enigma.models.settings import Settings
@@ -12,14 +12,9 @@ from enigma.models.slareport import SLAReport
 from enigma.models.scorereport import ScoreReport
 from enigma.models.inject import InjectReport
 
+from db_models import RvBTeamDB, ParableUserDB
+
 # Team
-class RvBTeamDB(SQLModel, table=True):
-    __tablename__ = 'teams'
-
-    name: str = Field(primary_key=True)
-    identifier: int = Field(ge=1, le=255, unique=True)
-    score: int
-
 class RvBTeam:
 
     def __init__(self, name: str, identifier: int, services: list[str]):
@@ -49,13 +44,10 @@ class RvBTeam:
     # This should be called at the end of every round
     # Gets passed a dict[service: result]
     def tabulate_scores(self, round: int, reports: dict[str: list[bool, str]]):
-        log.debug(f'Compiling score reports and tabulating score for {self.name}')
-        print(f'team {self.identifier}')
         msgs = {}
         sla_requirement = Settings.get_setting('sla_requirement')
         # Service check tabulation
         for service, result in reports.items():
-            print(service, result)
             log.debug(f'Report: {service} with result {result}')
             msgs.update({
                 service: result[1]
@@ -91,9 +83,6 @@ class RvBTeam:
                         # Threshold not met, extending SLA tracker
                         self.sla_tracker[service] = self.sla_tracker[service] + 1
                         log.debug(f'SLA violation tracking extended for {service}')
-            print(self.scores)
-            print(self.penalty_scores)
-            print(self.sla_tracker)
 
         # Inject tabulation
         inject_reports = InjectReport.get_all_team_reports(self.identifier)
@@ -258,6 +247,14 @@ class RvBTeam:
         log.debug(f'Adding Team {self.name} to database')
         try:
             with Session(db_engine) as session:
+                session.add(
+                    ParableUserDB(
+                        name=self.name,
+                        identifier=self.identifier,
+                        permission_level=2
+                    )
+                )
+
                 session.add(
                     RvBTeamDB(
                         name=self.name,

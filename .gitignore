@@ -1,4 +1,7 @@
 .venv/
+.enigma/
+.bot/
+.parable/
 
 *.pyc
 __pycache__/
@@ -14,6 +17,7 @@ build/
 *.egg-info/
 
 .idea/*
+.run/
 
 *.env
 

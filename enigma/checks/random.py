@@ -2,7 +2,7 @@ import random
 import time
 
 from enigma.checks import Service
-from enigma.enigma_logger import log
+from enigma.logger import log
 
 # Performs a random check
 class RandomService(Service):

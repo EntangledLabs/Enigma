@@ -7,7 +7,7 @@ import threading
 
 from enigma.checks import Service
 
-from enigma.enigma_logger import log
+from enigma.logger import log
 from enigma.engine import static_path, checks_path
 from enigma.broker import RabbitMQ
 
@@ -32,23 +32,8 @@ class RvBScoringEngine(ScoringEngine):
     def __init__(self):
         super().__init__()
 
-        log.info("Searching for RvB competition configurations")
-        self.boxes = Box.find_all()
-        self.credlists = Credlist.find_all()
-        self.services = Box.all_service_names(self.boxes)
-        log.info("RvB competition environment loaded")
-
-        log.info("Searching for RvB teams")
-        self.teams = RvBTeam.find_all(self.services)
-        log.info("RvB teams found, creating team credlists")
-        for team in self.teams:
-            team.create_credlists(
-                self.credlists
-            )
-        log.info("RvB teams loaded")
-
+        self.update_comp()
         self.round = 1
-
         log.info("RvB scoring engine ready...")
 
     # Starts the scoring engine loop
@@ -56,6 +41,10 @@ class RvBScoringEngine(ScoringEngine):
         # Initializing run
         log.info('Starting scoring!')
         self.engine_lock = True
+
+        if not self.teams_detected:
+            log.error('No teams detected, cannot start Enigma!')
+            return
 
         # Main loop
         while (self.round <= total_rounds or total_rounds == 0) and not self.stop:
@@ -252,7 +241,7 @@ class RvBScoringEngine(ScoringEngine):
         results = []
         timeout = time.time() + check_timeout
         with RabbitMQ() as rabbit:
-            result = rabbit.channel.queue_declare('', exclusive=True)
+            result = rabbit.channel.queue_declare('results_queue', exclusive=True)
             rabbit.channel.queue_bind(
                 exchange='enigma',
                 queue=result.method.queue,
@@ -270,5 +259,27 @@ class RvBScoringEngine(ScoringEngine):
         # After timeout, kill each process
         for thread in threads:
             thread.kill()
-        print(results)
         return results
+
+    def update_comp(self):
+        log.info("Searching for RvB competition configurations")
+        self.boxes = Box.find_all()
+        self.credlists = Credlist.find_all()
+        self.services = Box.all_service_names(self.boxes)
+        log.info("RvB competition environment loaded")
+
+        log.info("Searching for RvB teams")
+        self.teams = RvBTeam.find_all(self.services)
+
+        if len(self.teams) == 0:
+            self.teams_detected = False
+            log.info("No RvB teams found")
+            return
+        else:
+            self.teams_detected = True
+        log.info("RvB teams found, creating team credlists")
+        for team in self.teams:
+            team.create_credlists(
+                self.credlists
+            )
+        log.info("RvB teams loaded")

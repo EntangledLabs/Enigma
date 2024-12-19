@@ -2,7 +2,7 @@ import random
 import time
 
 from enigma.checks import Service
-from enigma.enigma_logger import log
+from enigma.logger import log
 
 # Performs a simple HTTP check
 # If an HTTP GET request is OK, the check passes

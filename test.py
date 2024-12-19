@@ -1,32 +1,23 @@
-import csv
-import json
-import os
+import json, csv
 from os.path import join, isfile, splitext
 from os import listdir
-import time
-import random
+
+from sqlmodel import create_engine
 
 from enigma.engine.database import del_db, init_db
-from enigma.engine.scoring import RvBScoringEngine
-from enigma.enigma_logger import write_log_header
 
-from enigma.models.team import RvBTeam
 from enigma.models.box import Box
-from enigma.models.credlist import Credlist
 from enigma.models.settings import Settings
-
+from enigma.models.credlist import Credlist
+from enigma.models.team import RvBTeam
 from enigma.broker import RabbitMQ
-import pika
-import subprocess
-import sys
-
-write_log_header()
-
-del_db()
-init_db()
 
 boxes_path = './example_configs/boxes'
 creds_path = './example_configs/creds'
+
+if input('Reset DB? ').lower() == 'y':
+    del_db()
+    init_db()
 
 #print('boxes')
 boxes = []
@@ -62,7 +53,7 @@ for path in listdir(creds_path):
             credlist.add_to_db()
 
 #print('teams')
-teams = []
+"""teams = []
 for i in range(5):
     team = RvBTeam(
         name=f'coolteam{i+1}',
@@ -70,10 +61,15 @@ for i in range(5):
         services=Box.all_service_names(boxes)
     )
     teams.append(team)
-    team.add_to_db()
+    team.add_to_db()"""
 
-Settings(first_octets='10.10', sla_requirement=2).add_to_db()
+Settings(first_octets='10.10', sla_requirement=2)
 
-se = RvBScoringEngine()
-
-se.run(5)
+while True:
+    cmd = input('Enter command: ')
+    with RabbitMQ() as rabbit:
+        rabbit.channel.basic_publish(
+            exchange='enigma',
+            routing_key='enigma.engine.cmd',
+            body=cmd
+        )

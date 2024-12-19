@@ -1,17 +1,14 @@
 import json
 
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import Session, select
 
 from enigma.engine.database import db_engine
-from enigma.enigma_logger import log
+from enigma.logger import log
+
+from db_models import CredlistDB, TeamCredsDB
 
 
 # Credlist
-class CredlistDB(SQLModel, table=True):
-    __tablename__ = 'credlists'
-    name: str = Field(primary_key=True)
-    creds: str
-
 class Credlist:
     
     def __init__(self, name: str, creds: dict):
@@ -21,6 +18,9 @@ class Credlist:
 
     def __repr__(self):
         return '<{}> named {} with creds {}'.format(type(self).__name__, self.name, self.creds)
+
+    #######################
+    # DB fetch/add
 
     # Tries to add the Credlist object to the DB. If exists, it will return False, else True
     def add_to_db(self):
@@ -38,9 +38,6 @@ class Credlist:
         except:
             log.warning(f"Failed to add Credlist {self.name} to database!")
             return False
-
-    #######################
-    # DB fetch/add
 
     # Fetches all Credlist from the DB
     @classmethod
@@ -68,12 +65,13 @@ class Credlist:
         )
     
 # TeamCreds
-class TeamCreds(SQLModel, table=True):
-    __tablename__ = 'teamcreds'
+class TeamCreds:
 
-    name: str = Field(foreign_key='credlists.name', primary_key=True)
-    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
-    creds: str
+    def __init__(self, name: str, team_id: int, creds: dict):
+        self.name = name
+        self.team_id = team_id
+        self.creds = creds
+        log.debug(f"Created new TeamCreds with name {self.name}")
 
     #######################
     # DB fetch/add
@@ -97,11 +95,11 @@ class TeamCreds(SQLModel, table=True):
         with Session(db_engine) as session:
             db_teamcred = session.exec(
                 select(
-                    TeamCreds
+                    TeamCredsDB
                 ).where(
-                    TeamCreds.name == name
+                    TeamCredsDB.name == name
                 ).where(
-                    TeamCreds.team_id == team_id
+                    TeamCredsDB.team_id == team_id
                 )
             ).one()
             return json.loads(db_teamcred.creds)
@@ -112,9 +110,9 @@ class TeamCreds(SQLModel, table=True):
         with Session(db_engine) as session:
             db_teamcreds = session.exec(
                 select(
-                    TeamCreds
+                    TeamCredsDB
                 ).where(
-                    TeamCreds.team_id == team_id
+                    TeamCredsDB.team_id == team_id
                 )
             ).all()
             return [teamcreds.creds for teamcreds in db_teamcreds]

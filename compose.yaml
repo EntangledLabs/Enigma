@@ -2,26 +2,30 @@ services:
   enigma:
     container_name: enigma
     image: enigma:latest
-    build: ./enigma
-    ports:
-      - "4731:4731"
+    build:
+      context: .
+      dockerfile: ./docker/enigma/Dockerfile
     env_file:
       - ".env"
     environment:
-      DB_URL: 'postgresql+psycopg://enigma:${POSTGRES_PASSWORD}@enigma-postgres:5432/enigma'
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
     volumes:
-      - ./logs:/enigma_engine/logs
-      - ./static:/enigma_engine/static
+      - ./logs:/app/logs
+      - ./static:/app/static
     restart: no
     depends_on:
-      db-enigma:
+      postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -f -X GET http://localhost:4731/ -H 'accept: application/json'"]
+      test: ["CMD-SHELL", "ping localhost -c 2"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_interval: 2s
+
 
   parable:
     container_name: parable
@@ -29,10 +33,11 @@ services:
     build: ./parable
     ports:
       - "5070:5070"
+    restart: no
     env_file:
       - ".env"
     environment:
-      DB_URL: 'enigma-postgres'
+      DB_URL: enigma-postgres
     depends_on:
       enigma:
         condition: service_healthy
@@ -44,26 +49,31 @@ services:
       start_period: 30s
 
   discord:
-    container_name: enigma-discord
-    image: enigma-bot:latest
-    build: ./enigma_bot
+    container_name: praxos
+    image: praxos:latest
+    build:
+      context: .
+      dockerfile: ./docker/praxos/Dockerfile
+    restart: no
     env_file:
       - ".env"
     environment:
-      API_URL: 'http://enigma:4731/api/'
+      POSTGRES_HOST: postgres
     volumes:
-      - ./logs:/enigma_bot/logs:rw
-    restart: no
+      - ./logs:/app/logs
     depends_on:
       enigma:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
 
-  proxy:
-    container_name: parable-proxy
+  nginx:
+    container_name: proxy
     image: 'nginx-enigma:stable-alpine'
-    build: ./nginx
+    build: docker/nginx
     ports:
      - "80:80"
+    restart: unless-stopped
     depends_on:
      parable:
        condition: service_healthy
@@ -72,15 +82,15 @@ services:
      interval: 1m30s
      timeout: 10s
      retries: 3
-     start_period: 40s
+     start_period: 10s
      start_interval: 5s
 
-  db-enigma:
-    container_name: enigma-postgres
+  postgres:
+    container_name: postgres
     image: postgres:alpine
     ports:
       - "5432:5432"
-    restart: always
+    restart: unless-stopped
     env_file:
       - ".env"
     environment:
@@ -93,17 +103,20 @@ services:
       interval: 5s
       retries: 5
       timeout: 5s
+      start_period: 2s
 
-  queue-enigma:
-    container_name: enigma-rabbitmq
-    image: rabbitmq:4.0.4-management
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.0.4-alpine
     ports:
       - "5672:5672"
-      - "8080:15672"
-    restart: always
+    restart: unless-stopped
     env_file:
       - ".env"
+    volumes:
+      - rmqdata:/var/lib/rabbitmq
 
 volumes:
   pgdata:
+  rmqdata:
   static:

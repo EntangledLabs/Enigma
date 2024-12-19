@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 import pika
 
-from enigma.enigma_logger import log
+from enigma.logger import log
 
 load_dotenv(override=True)
 

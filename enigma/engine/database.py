@@ -7,30 +7,32 @@ db_engine = create_engine(
     echo=False
 )
 
-def get_session():
-    with Session(db_engine) as session:
-        yield session
-
 def init_db():
-    from enigma.models import (
-        box,
-        credlist,
-        inject,
-        scorereport,
-        settings,
-        slareport,
-        team
+    from db_models import (
+        BoxDB,
+        CredlistDB,
+        TeamCredsDB,
+        InjectDB,
+        InjectReportDB,
+        ScoreReportDB,
+        SLAReportDB,
+        RvBTeamDB,
+        ParableUserDB,
+        SettingsDB
     )
     SQLModel.metadata.create_all(db_engine)
 
 def del_db():
-    from enigma.models import (
-        box,
-        credlist,
-        inject,
-        scorereport,
-        settings,
-        slareport,
-        team
+    from db_models import (
+        BoxDB,
+        CredlistDB,
+        TeamCredsDB,
+        InjectDB,
+        InjectReportDB,
+        ScoreReportDB,
+        SLAReportDB,
+        RvBTeamDB,
+        ParableUserDB,
+        SettingsDB
     )
     SQLModel.metadata.drop_all(db_engine)

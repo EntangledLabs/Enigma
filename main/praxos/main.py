@@ -1,27 +1,33 @@
-from os import getenv
+from os import getenv, getcwd
+from os.path import join
 from io import TextIOWrapper, BytesIO, StringIO
 import asyncio
+from datetime import datetime
 import csv, re
+
+from dotenv import load_dotenv
 
 import discord
 from discord.ext import commands
 
-from enigma_requests import Settings, Team, Box, ParableUser
-
-from bot import log
-from bot.settings import guild_id
-from bot.util import create_pw
+from praxos.logger import log, write_log_header
+from praxos.models.settings import Settings
+from praxos.models.team import RvBTeam
+from praxos.models.box import Box
+from praxos.models.user import ParableUser
 
 ###############
-# TODO: Add "discord event" creation
+# TODO: Add "praxos event" creation
 # TODO: Add team creds
 
+load_dotenv(override=True)
 
+logs_path = join(getcwd(), 'logs')
+log_file = join(logs_path, 'praxos.log')
 
+guild_id = int(getenv('DISCORD_GUILD_ID'))
 
-
-
-# Create the discord bot
+# Create the praxos bot
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -34,7 +40,9 @@ async def on_ready():
     guild = discord.utils.get(bot.guilds, id=guild_id)
     log.info(f'{bot.user} has connected to {guild.name}')
     members = '\n - '.join([member.name for member in guild.members])
-    log.info(f'Guild Members:\n - {members}')
+    log.debug(f'Guild Members:\n - {members}')
+
+    log.info("Praxos is ready!")
 
 ###################################
 # Bot commands
@@ -48,7 +56,7 @@ async def init(ctx: commands.context.Context):
     log.info('Command \'init\' invoked. Creating channels and roles')
     await ctx.send('Command \'init\' invoked. Creating channels and roles')
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    comp_name = Settings.get().comp_name
+    comp_name = Settings.get_setting('comp_name')
 
     gt_role = discord.utils.get(guild.roles, name='Green Team')
     rt_role = discord.utils.get(guild.roles, name='Red Team')
@@ -131,7 +139,7 @@ async def teardown(ctx: commands.context.Context):
     await ctx.send('Command \'teardown\' invoked. Tearing down channels and roles')
 
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    comp_name = Settings.get().comp_name
+    comp_name = Settings.get_setting('comp_name')
 
     await delete_teams(ctx)
 
@@ -139,6 +147,7 @@ async def teardown(ctx: commands.context.Context):
     await discord.utils.get(guild.roles, name=f'{comp_name} Developer').delete()
 
     comp_cat = discord.utils.get(guild.categories, name=comp_name)
+
     for channel in comp_cat.channels:
         await channel.delete()
     await comp_cat.delete()
@@ -154,30 +163,31 @@ async def create_teams(ctx: commands.context.Context):
     log.info('Command \'create_teams\' invoked. Creating teams')
     await ctx.send('Command \'create_teams\' invoked. Creating teams')
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    comp_name = Settings.get().comp_name
+    comp_name = Settings.get_setting('comp_name')
 
     await delete_teams(ctx)
-
     username_pw_combos = {}
 
     with TextIOWrapper(BytesIO(await ctx.message.attachments[0].read())) as f:
         csvreader = csv.reader(f)
         identifier = ParableUser.last_identifier() + 1
+
         for row in csvreader:
             teamname = row.pop(0)
 
-            Team.add(Team(
+            user = ParableUser(
+                username=teamname,
+                identifier=identifier,
+                permission_level=2
+            )
+            parable_pw = user.create_pw(24)
+            user.add_to_db()
+
+            RvBTeam(
                 name=teamname,
                 identifier=identifier,
                 score=0
-            )).text
-            parable_pw = create_pw(length=24)
-            ParableUser.add(ParableUser(
-                username=teamname,
-                identifier=identifier,
-                permission_level=2,
-                password=parable_pw
-            ))
+            ).add_to_db()
 
             username_pw_combos.update({
                 teamname: parable_pw
@@ -194,7 +204,7 @@ async def create_teams(ctx: commands.context.Context):
             team_cat = await guild.create_category(name=f'{comp_name} {teamname}', overwrites=team_overwrites)
             await team_cat.create_text_channel(name='team-chat', overwrites=team_overwrites)
             await team_cat.create_voice_channel(name='team-voice', overwrites=team_overwrites)
-            
+
             for teammate in row:
                 member = discord.utils.get(guild.members, name=teammate)
                 roles = [
@@ -202,15 +212,15 @@ async def create_teams(ctx: commands.context.Context):
                     discord.utils.get(guild.roles, name=f'{comp_name} Competitor')
                 ]
                 for role in roles:
-                    print(teammate, member, team_role)
                     await member.add_roles(role)
 
-            await team_cat.text_channels[0].send(f'{team_role.mention} Welcome to {Settings.get().comp_name}! Your Parable login is **{teamname}** with password **{parable_pw}**')
+            await team_cat.text_channels[0].send(f'{team_role.mention} Welcome to {comp_name}! Your Parable login is **{teamname}** with password **{parable_pw}**')
 
             identifier = identifier + 1
 
     csvfile = StringIO()
     fieldnames = ['team', 'password']
+
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     for team, password in username_pw_combos.items():
@@ -233,25 +243,32 @@ async def delete_teams(ctx: commands.context.Context):
     log.info('Command \'delete_teams\' invoked. Deleting teams')
     await ctx.send('Command \'delete_teams\' invoked. Deleting teams')
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    comp_name = Settings.get().comp_name
+    comp_name = Settings.get_setting('comp_name')
 
     competitor_role_re = re.compile(r'^Team\s[a-zA-Z0-9]+$')
     competitor_cat_re = re.compile(fr'^{comp_name}\s[a-zA-Z0-9]+$')
 
+    log.debug("Removing team roles")
     for role in guild.roles:
         if competitor_role_re.match(role.name) is not None:
             await role.delete()
 
+    log.debug("Removing team categories and channels")
     for category in guild.categories:
         if competitor_cat_re.match(category.name):
             for channel in category.channels:
                 await channel.delete()
             await category.delete()
 
-    db_teams = Team.list()
+    log.debug("Deleting teams")
+    db_teams = RvBTeam.find_all()
     for team in db_teams:
-        Team.delete(team.identifier)
-        ParableUser.delete(team.name)
+        team.remove_from_db()
+
+    log.debug("Deleting users")
+    db_users = ParableUser.find_all()
+    for user in db_users:
+        user.remove_from_db()
 
     log.info('Finished! Deleted teams')
     await ctx.send('Finished! Deleted teams')
@@ -259,7 +276,7 @@ async def delete_teams(ctx: commands.context.Context):
 
 # Green team support commands
 @bot.command(pass_context=True)
-@commands.check_any(commands.has_role(f'{Settings.get().comp_name} Competitor'),
+@commands.check_any(commands.has_role(f'{Settings.get_setting('comp_name')} Competitor'),
                     commands.has_role("Green Team"), 
                     commands.has_role("Director"), 
                     commands.has_guild_permissions(administrator=True))
@@ -272,6 +289,7 @@ async def request(ctx: commands.context.Context, *args):
     for role in ctx.author.roles:
         if competitor_role_re.match(role.name):
             comp_role = role.name
+
     if comp_role is None:
         comp_role = ctx.author.name
 
@@ -280,7 +298,7 @@ async def request(ctx: commands.context.Context, *args):
         await ctx.send('Support request sent! A Green Team member will be with you ASAP')
     
     elif args[0] == 'reset':
-        box_names = [box.name for box in Box.list()]
+        box_names = [box.name for box in Box.find_all()]
         if args[1] not in box_names:
             await ctx.send(f'The box you specified, **{args[1]}**, does not exist!')
         else:
@@ -292,6 +310,7 @@ async def request(ctx: commands.context.Context, *args):
                 response = await bot.wait_for('message', check=check, timeout=30)
             except asyncio.TimeoutError:
                 await ctx.send('Timeout! Request expired, please run the command again')
+                return
             
             if response.content.lower() in ('yes', 'y'):
                 await ctx.send('Box reset request sent! Please hang tight.')
@@ -300,4 +319,9 @@ async def request(ctx: commands.context.Context, *args):
                 await ctx.send('Box reset request cancelled!')
 
 if __name__ == '__main__':
+    write_log_header()
+
+    log.info("Welcome to Praxos discord bot for Enigma Scoring Engine!")
+    log.info("Entangled was still in pain while making this")
+
     bot.run(getenv("DISCORD_API_KEY"), log_handler=None)

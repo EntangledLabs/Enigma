@@ -1,11 +1,10 @@
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select
 
-from enigma.engine.database import db_engine
-from enigma.logger import log
+from praxos.database import db_engine
+from praxos.logger import log
 
 from db_models import SettingsDB
 
-# Settings
 class Settings:
 
     def __init__(self, **kwargs):
@@ -27,24 +26,6 @@ class Settings:
         for k, v in kwargs.items():
             if k in setting_keys:
                 setattr(self, k, v)
-
-    #######################
-    # DB fetch/add
-    def add_to_db(self):
-        log.debug(f'Adding settings to database')
-        with Session(db_engine) as session:
-            session.exec(delete(SettingsDB))
-            session.commit()
-
-            settings = SettingsDB()
-
-            for attr in vars(self):
-                setattr(settings, attr, getattr(self, attr))
-
-            session.add(
-                SettingsDB()
-            )
-            session.commit()
 
     @classmethod
     def get_setting(cls, key: str):

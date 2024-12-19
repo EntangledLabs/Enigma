@@ -1,21 +1,13 @@
 import json
 
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import Session, select
 
 from enigma.engine.database import db_engine
-from enigma.enigma_logger import log
+from enigma.logger import log
 
+from db_models import InjectDB, InjectReportDB
 
 # Inject
-class InjectDB(SQLModel, table=True):
-    __tablename__ = 'injects'
-    id: int = Field(primary_key=True)
-    name: str = Field(unique=True)
-    desc: str
-    worth: int
-    path: str | None = None
-    rubric: str
-
 class Inject:
 
     def __init__(self, id: int, name: str, desc: str, worth: int, path: str | None, rubric: dict):
@@ -106,12 +98,12 @@ class Inject:
         )
     
 # Inject reports
-class InjectReport(SQLModel, table=True):
-    __tablename__ = 'injectreports'
-    team_id: int = Field(foreign_key='teams.identifier', primary_key=True)
-    inject_num: int = Field(foreign_key='injects.id', primary_key=True)
-    score: int
-    breakdown: str
+class InjectReport:
+    def __init__(self, team_id: int, inject_num: int, score: int, breakdown: str):
+        self.team_id = team_id
+        self.inject_num = inject_num
+        self.score = score
+        self.breakdown = breakdown
 
     #######################
     # DB fetch/add
@@ -122,11 +114,11 @@ class InjectReport(SQLModel, table=True):
         with Session(db_engine) as session:
             db_report = session.exec(
                 select(
-                    InjectReport
+                    InjectReportDB
                 ).where(
-                    InjectReport.team_id == team_id
+                    InjectReportDB.team_id == team_id
                 ).where(
-                    InjectReport.inject_num == inject_num
+                    InjectReportDB.inject_num == inject_num
                 )
             ).one()
             return (db_report.score, json.loads(db_report.breakdown))
@@ -137,9 +129,9 @@ class InjectReport(SQLModel, table=True):
         with Session(db_engine) as session:
             db_reports = session.exec(
                 select(
-                    InjectReport
+                    InjectReportDB
                 ).where(
-                    InjectReport.team_id == team_id
+                    InjectReportDB.team_id == team_id
                 )
             ).all()
             return [(db_report.inject_num, db_report.score) for db_report in db_reports]
