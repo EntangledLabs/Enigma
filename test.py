@@ -1,82 +1,75 @@
-import tomllib, tomli_w, csv, json
-from os.path import join, splitext
-from io import TextIOWrapper, BytesIO, StringIO
+import json, csv
+from os.path import join, isfile, splitext
+from os import listdir
 
-import requests
+from sqlmodel import create_engine
 
-from enigma_requests import Box, Credlist, Inject, ParableUser
+from enigma.engine.database import del_db, init_db
 
-"""with open(join('./example_configs/creds', 'examplecreds.csv'), 'r+') as f:
-    data = csv.reader(f)
-    creds = dict()
-    for row in data:
-        creds.update({row[0]: row[1]})
-    print(Credlist.add(
-        Credlist(
-            name='examplecreds',
-            creds=json.dumps(creds)
-        )
-    ))
+from enigma.models.box import Box
+from enigma.models.settings import Settings
+from enigma.models.credlist import Credlist
+from enigma.models.team import RvBTeam
+from enigma.broker import RabbitMQ
 
-with open(join('./example_configs/creds', 'examplecreds2.csv'), 'r+') as f:
-    data = csv.reader(f)
-    creds = dict()
-    for row in data:
-        creds.update({row[0]: row[1]})
-    print(Credlist.add(
-        Credlist(
-            name='examplecreds2',
-            creds=json.dumps(creds)
-        )
-    ))
+boxes_path = './example_configs/boxes'
+creds_path = './example_configs/creds'
 
-with open(join('./example_configs/boxes', 'examplebox.toml'), 'rb') as f:
-    tomlreader = tomllib.load(f)
-    print(Box.add(
-        Box(
-            name='examplebox',
-            identifier=tomlreader['identifier'],
-            config=tomli_w.dumps(tomlreader)
-        )
+if input('Reset DB? ').lower() == 'y':
+    del_db()
+    init_db()
+
+#print('boxes')
+boxes = []
+ident = 1
+for path in listdir(boxes_path):
+    if isfile(join(boxes_path, path)) and splitext(path)[-1].lower() == '.json':
+        with open(join(boxes_path, path), 'r') as f:
+            box = Box(
+                name=splitext(path)[0].lower(),
+                identifier=ident,
+                service_config=json.load(f)
+            )
+            boxes.append(box)
+            box.add_to_db()
+    ident = ident + 1
+
+#print('credlists')
+credlists = []
+for path in listdir(creds_path):
+    if isfile(join(creds_path, path)) and splitext(path)[-1].lower() == '.csv':
+        with open(join(creds_path, path), 'r+') as f:
+            csvreader = csv.reader(f)
+            creds = {}
+            for row in csvreader:
+                creds.update({
+                    row[0]: row[1]
+                })
+            credlist = Credlist(
+                name=splitext(path)[0].lower(),
+                creds=creds
+            )
+            credlists.append(credlist)
+            credlist.add_to_db()
+
+#print('teams')
+"""teams = []
+for i in range(5):
+    team = RvBTeam(
+        name=f'coolteam{i+1}',
+        identifier=i+1,
+        services=Box.all_service_names(boxes)
     )
-)
-with open(join('./example_configs/boxes', 'examplebox2.toml'), 'rb') as f:
-    tomlreader = tomllib.load(f)
-    print(Box.add(
-        Box(
-            name='examplebox2',
-            identifier=tomlreader['identifier'],
-            config=tomli_w.dumps(tomlreader)
+    teams.append(team)
+    team.add_to_db()"""
+
+Settings(first_octets='10.10', sla_requirement=2)
+
+while True:
+    cmd = input('Enter command: ')
+    with RabbitMQ() as rabbit:
+        rabbit.channel.basic_publish(
+            exchange='enigma',
+            routing_key='enigma.engine.cmd',
+            body=cmd
         )
-    ))
-
-with open(join('./example_configs/injects', 'inject1.toml'), 'rb') as f:
-    tomlreader = tomllib.load(f)
-    print(Inject.add(
-        Inject(
-            num=1,
-            name=tomlreader['name'],
-            config=tomli_w.dumps(tomlreader)
-        )
-    ))"""
-
-teams = {
-    'coolteam': 'sdkjfhglkert',
-    'neatteam': 'ywkjhttlkffk',
-    'superteam': 'jkghskjlhkpd'
-}
-
-csvfile = StringIO()
-fieldnames = ['team', 'password']
-
-writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-for team, password in teams.items():
-    writer.writerow({'team': team, 'password': password})
-csvfile.seek(0)
-
-buffer = BytesIO()
-buffer.write(csvfile.getvalue().encode('utf-8'))
-buffer.seek(0)
-buffer.name = 'users.csv'
-
-print(buffer)

@@ -1,0 +1,28 @@
+{
+    "name": "Example Inject", 
+    "description": "I guess this is a description", 
+    "worth": 100, 
+    "path": "", 
+    "rubric": {
+        "professionalism": {
+            "weight": 0.3, 
+            "description": "Submission should be professional", 
+            "categories": {
+                "troll": "Didn't submit anything", 
+                "dreadful": "Minimum effort", 
+                "poor": "They tried", 
+                "acceptable": "Good enough", 
+                "exceeds": "Very profesh", 
+                "outstanding": "The most professional thing i've ever read"
+            }
+        }, 
+        "accuracy": {
+            "weight": 0.7, 
+            "description": "Submission should have accurate information", 
+            "categories": {
+                "fail": "Not at all accurate", 
+                "pass": "Accurate information"
+            }
+        }
+    }
+}

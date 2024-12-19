@@ -1,0 +1,16 @@
+{
+    "ssh": {
+        "port": 22, 
+        "auth": ["plaintext", "pubkey"], 
+        "keyfile": "", 
+        "credlist": ["examplecreds"]
+    }, 
+    "http": {
+        "port": 80, 
+        "path": ""
+    }, 
+    "https": {
+        "port": 443, 
+        "path": ""
+    }
+}

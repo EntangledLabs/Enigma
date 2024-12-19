@@ -1,0 +1,12 @@
+{
+    "ssh": {
+        "port": 22, 
+        "auth": ["plaintext"], 
+        "keyfile": "", 
+        "credlist": ["examplecreds", "examplecreds2"]
+    }, 
+    "http": {
+        "port": 80, 
+        "path": "index.html"
+    }
+}
