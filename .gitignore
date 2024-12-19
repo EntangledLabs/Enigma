@@ -17,6 +17,7 @@ build/
 *.egg-info/
 
 .idea/*
+.idea/
 .run/
 
 *.env
