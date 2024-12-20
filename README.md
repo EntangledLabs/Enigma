@@ -22,7 +22,7 @@ The following table lists the ports of each service:
 
 | Service | Port(s) |
 |---|---|
-|Enigma|4731|
+|Enigma||
 |Parable|5070|
 |PostgreSQL|5432|
 |Nginx|80,443|
