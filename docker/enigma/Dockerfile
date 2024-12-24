@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 # Copy modules
 COPY /enigma /app/enigma
-COPY /db_models /app/db_models
+COPY /enigma_models /app/enigma_models
 
 # Copy main.py
 COPY /main/enigma/main.py /app/main.py

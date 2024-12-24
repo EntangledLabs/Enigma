@@ -11,10 +11,10 @@ import discord
 from discord.ext import commands
 
 from praxos.logger import log, write_log_header
-from praxos.models.settings import Settings
-from praxos.models.team import RvBTeam
-from praxos.models.box import Box
-from praxos.models.user import ParableUser
+from enigma_models.models.settings import Settings
+from enigma_models.models.team import RvBTeam
+from enigma_models.models.box import Box
+from enigma_models.models.user import ParableUser
 
 ###############
 # TODO: Add "praxos event" creation

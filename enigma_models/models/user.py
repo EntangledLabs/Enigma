@@ -1,13 +1,20 @@
 import secrets, string
 
-from sqlmodel import Session, select
+from sqlmodel import SQLModel, Field, Session, select
 
-from db_models import ParableUserDB
-from db_models.auth import get_hash
+from enigma_models.database import db_engine
+from enigma_models.auth import get_hash, verify_hash
 
-from praxos.logger import log
-from praxos.database import db_engine
+# ParableUser model
+class ParableUserDB(SQLModel, table=True):
+    __tablename__ = 'parableusers'
 
+    name: str = Field(primary_key=True)
+    identifier: int = Field(ge=1, le=255, unique=True)
+    permission_level: int = Field(ge=0, le=2)
+    pw_hash: bytes | None = Field(default=None)
+
+# ParableUser class
 class ParableUser:
 
     def __init__(self, username: str, identifier: int, permission_level: int, pw_hash: bytes=None):
@@ -22,8 +29,10 @@ class ParableUser:
         self.pw_hash = get_hash(password)
         return password
 
+    def check_pw(self, password: str):
+        return verify_hash(password, self.pw_hash)
+
     def add_to_db(self):
-        log.debug(f"Adding Parable user {self.username} to DB")
         try:
             with Session(db_engine) as session:
                 session.add(
@@ -37,11 +46,9 @@ class ParableUser:
                 session.commit()
             return True
         except:
-            log.warning(f"Failed to add Parable user {self.username} to DB")
             return False
 
     def remove_from_db(self) -> bool:
-        log.debug(f'Removing Parable user {self.username} from database')
         try:
             with Session(db_engine) as session:
                 user = session.exec(
@@ -54,14 +61,12 @@ class ParableUser:
                 session.delete(user)
                 session.commit()
         except:
-            log.warning(f'Failed to remove Parable user {self.name} from database!')
             return False
         return True
 
     @classmethod
     def last_identifier(cls):
         with Session(db_engine) as session:
-            log.debug(f'Retrieving last identifier from database')
             last_user = session.exec(
                 select(
                     ParableUserDB
@@ -73,10 +78,38 @@ class ParableUser:
                 return 0
             return last_user.identifier
 
+    @classmethod
+    def find(cls, username: str=None, identifier: int=None):
+        with Session(db_engine) as session:
+            if username is not None:
+                user = session.exec(
+                    select(
+                        ParableUserDB
+                    ).where(
+                        ParableUserDB.name == username
+                    )
+                ).one()
+            elif identifier is not None:
+                user = session.exec(
+                    select(
+                        ParableUserDB
+                    ).where(
+                        ParableUserDB.identifier == identifier
+                    )
+                ).one()
+
+            if user is not None:
+                return ParableUser(
+                    username=user.name,
+                    identifier=user.identifier,
+                    permission_level=user.permission_level,
+                    pw_hash=user.pw_hash
+                )
+            return None
+
     # Fetches all Parable user from the DB
     @classmethod
     def find_all(cls) -> list:
-        log.debug(f'Retrieving all Parable users from database')
         users = []
         with Session(db_engine) as session:
             db_users = session.exec(

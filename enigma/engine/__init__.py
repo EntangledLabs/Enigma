@@ -11,5 +11,12 @@ postgres_settings = {
     'port': getenv('POSTGRES_PORT')
 }
 
+rabbitmq_settings = {
+    'user': getenv('RABBITMQ_DEFAULT_USER'),
+    'password': getenv('RABBITMQ_DEFAULT_PASSWORD'),
+    'host': getenv('RABBITMQ_HOST'),
+    'port': 5672
+}
+
 static_path = join(getcwd(), 'static')
 checks_path = join(getcwd(), 'enigma')

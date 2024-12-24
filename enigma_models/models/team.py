@@ -1,10 +1,16 @@
-from sqlmodel import Session, select
+from sqlmodel import SQLModel, Field, Session, select
 
-from db_models import RvBTeamDB
+from enigma_models.database import db_engine
 
-from praxos.logger import log
-from praxos.database import db_engine
+# Team model
+class RvBTeamDB(SQLModel, table=True):
+    __tablename__ = 'teams'
 
+    name: str = Field(primary_key=True, foreign_key='parableusers.name')
+    identifier: int = Field(ge=1, le=255, unique=True)
+    score: int
+
+# Team class
 class RvBTeam:
 
     def __init__(self, name: str, identifier: int, score: int):
@@ -12,9 +18,11 @@ class RvBTeam:
         self.identifier = identifier
         self.score = score
 
+#######################
+    # DB fetch/add
+
     # Tries to add the team object to the DB. If exists, it will return False, else True
-    def add_to_db(self) -> bool:
-        log.debug(f'Adding Team {self.name} to database')
+    def add_to_db(self):
         try:
             with Session(db_engine) as session:
                 session.add(
@@ -27,32 +35,23 @@ class RvBTeam:
                 session.commit()
             return True
         except:
-            log.warning(f'Failed to add Team {self.name} to database!')
             return False
 
-    # Tries to remove the team object from the DB. If it doesn't exist, it will return False, else True
-    def remove_from_db(self) -> bool:
-        log.debug(f'Removing Team {self.name} from database')
-        try:
-            with Session(db_engine) as session:
-                team = session.exec(
-                    select(
-                        RvBTeamDB
-                    ).where(
-                        RvBTeamDB.name == self.name
-                    )
-                ).one()
-                session.delete(team)
-                session.commit()
-        except:
-            log.warning(f'Failed to remove Team {self.name} from database!')
-            return False
-        return True
+    # Updates score in DB
+    def update_in_db(self):
+        with Session(db_engine) as session:
+            session.exec(
+                select(
+                    RvBTeamDB
+                ).where(
+                    RvBTeamDB.identifier == self.identifier
+                )
+            ).one().score = self.score
+            session.commit()
 
     # Fetches all Team from the DB
     @classmethod
-    def find_all(cls) -> list:
-        log.debug(f'Retrieving all teams from database')
+    def find_all(cls):
         teams = []
         with Session(db_engine) as session:
             db_teams = session.exec(
@@ -69,3 +68,12 @@ class RvBTeam:
                 )
             )
         return teams
+
+    # Creates a new Team from the config info
+    @classmethod
+    def new(cls, name: str, identifier: int, score: int):
+        return cls(
+            name=name,
+            identifier=identifier,
+            score=score
+        )

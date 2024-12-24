@@ -3,9 +3,9 @@ import sys
 from enigma.logger import log, write_log_header
 
 from enigma.engine.cmd import RvBCMD
-from enigma.engine.database import del_db, init_db
+from enigma_models.database import del_db, init_db
 
-from enigma.models.settings import Settings
+from enigma_models.models.settings import Settings
 
 # main.py [OPTIONS]
 # -r, --reset   Does a reset of the database

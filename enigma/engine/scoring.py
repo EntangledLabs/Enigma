@@ -12,9 +12,9 @@ from enigma.engine import static_path, checks_path
 from enigma.broker import RabbitMQ
 
 from enigma.models.box import Box
-from enigma.models.credlist import Credlist
+from enigma_models.models.credlist import Credlist
 from enigma.models.team import RvBTeam
-from enigma.models.settings import Settings
+from enigma_models.models.settings import Settings
 
 class ScoringEngine:
 
@@ -269,7 +269,7 @@ class RvBScoringEngine(ScoringEngine):
         log.info("RvB competition environment loaded")
 
         log.info("Searching for RvB teams")
-        self.teams = RvBTeam.find_all(self.services)
+        self.teams = RvBTeam.find_all(services=self.services)
 
         if len(self.teams) == 0:
             self.teams_detected = False
