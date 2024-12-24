@@ -31,7 +31,7 @@ class RvBTeam(RvBTeamModel):
         log.debug(f'Created RvBTeam {self.name}')
 
     def __repr__(self):
-        return '<{}> with team id {} and total score {}'.format(
+        return '<{}> with competitor id {} and total score {}'.format(
             type(self).__name__,
             self.identifier,
             self.total_scores['total_score']
@@ -97,7 +97,7 @@ class RvBTeam(RvBTeamModel):
             score=self.total_scores['total_score'],
             msg=json.dumps(msgs)
         ).add_to_db()
-        log.debug(f'Published score report for team {self.name}')
+        log.debug(f'Published score report for competitor {self.name}')
 
     # Updates total score
     def update_total(self):
@@ -216,7 +216,7 @@ class RvBTeam(RvBTeamModel):
     #######################
     # Creds methods
 
-    # Creates copies of the credlists specific to the team
+    # Creates copies of the credlists specific to the competitor
     def create_credlists(self, credlists: list[Credlist]):
         log.debug(f'Creating credlists for {self.name}')
         for credlist in credlists:
@@ -226,7 +226,7 @@ class RvBTeam(RvBTeamModel):
                 creds=credlist.creds
             ).add_to_db()
 
-    # Returns a random user and password for use in service check
+    # Returns a random competitor and password for use in service check
     # Parameter credlists is a list of names of the credlists to choose from
     def get_random_cred(self, credlists: list[str]) -> dict:
         log.debug(f'Getting random cred for {self.name}')

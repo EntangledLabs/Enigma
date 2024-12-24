@@ -21,7 +21,7 @@ class RvBTeam:
 #######################
     # DB fetch/add
 
-    # Tries to add the team object to the DB. If exists, it will return False, else True
+    # Tries to add the competitor object to the DB. If exists, it will return False, else True
     def add_to_db(self):
         try:
             with Session(db_engine) as session:

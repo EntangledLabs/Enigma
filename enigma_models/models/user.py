@@ -1,4 +1,5 @@
 import secrets, string
+from enum import Enum
 
 from sqlmodel import SQLModel, Field, Session, select
 
@@ -17,6 +18,11 @@ class ParableUserDB(SQLModel, table=True):
 # ParableUser class
 class ParableUser:
 
+    class Permission(Enum):
+        ADMINISTRATOR = 0
+        GREEN = 1
+        USER = 2
+
     def __init__(self, username: str, identifier: int, permission_level: int, pw_hash: bytes=None):
         self.username = username
         self.identifier = identifier
@@ -28,6 +34,9 @@ class ParableUser:
         password = ''.join(secrets.choice(alphabet) for i in range(length))
         self.pw_hash = get_hash(password)
         return password
+
+    def set_pw(self, password: str):
+        self.pw_hash = get_hash(password)
 
     def check_pw(self, password: str):
         return verify_hash(password, self.pw_hash)
@@ -107,7 +116,7 @@ class ParableUser:
                 )
             return None
 
-    # Fetches all Parable user from the DB
+    # Fetches all Parable competitor from the DB
     @classmethod
     def find_all(cls) -> list:
         users = []

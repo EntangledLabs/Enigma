@@ -90,9 +90,9 @@ class RvBScoringEngine(ScoringEngine):
         self.engine_lock = False
 
         # Exporting end-of-scoring data
-        log.info('Exporting individual team score breakdowns')
+        log.info('Exporting individual competitor score breakdowns')
         for team in self.teams:
-            team.export_breakdowns(f'team{team.identifier}_final', static_path)
+            team.export_breakdowns(f'competitor{team.identifier}_final', static_path)
 
     # Score check methods
 
@@ -135,7 +135,7 @@ class RvBScoringEngine(ScoringEngine):
         log.debug('Created score checks with check data')
 
         # Presumed guilty check results
-        # reports = {team identifier: {service: [result, msg]}}
+        # reports = {competitor identifier: {service: [result, msg]}}
         reports = {}
         for team in self.teams:
             team_results = {}
@@ -154,7 +154,7 @@ class RvBScoringEngine(ScoringEngine):
             reports[result[0]][result[1]][1] = result[2]
         log.debug('Scores updated, proceeding to tabulate scores')
 
-        # Tabulate scores for each team
+        # Tabulate scores for each competitor
         for team in self.teams:
             team.tabulate_scores(self.round, reports[team.identifier])
 
@@ -162,7 +162,7 @@ class RvBScoringEngine(ScoringEngine):
 
     # Finds and applies check options for a service
     def get_check_options(self, service: Service, team: RvBTeam):
-        log.debug(f'Creating check data for team {team.identifier} with service {service.name}')
+        log.debug(f'Creating check data for competitor {team.identifier} with service {service.name}')
         check_options = []
 
         # If check requires a credlist, get a random cred and add it to options
@@ -277,7 +277,7 @@ class RvBScoringEngine(ScoringEngine):
             return
         else:
             self.teams_detected = True
-        log.info("RvB teams found, creating team credlists")
+        log.info("RvB teams found, creating competitor credlists")
         for team in self.teams:
             team.create_credlists(
                 self.credlists
