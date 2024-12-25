@@ -3,9 +3,13 @@ from os.path import join
 
 from dotenv import load_dotenv
 
+from uvicorn.config import LOGGING_CONFIG
+
 load_dotenv(override=True)
 
-#### Creates a universal logger for Enigma
+#### Creates a universal logger for Parable
+
+log_config = LOGGING_CONFIG
 
 log_level = getenv('LOG_LEVEL')
 logs_path = join(getcwd(), 'logs')
@@ -19,34 +23,26 @@ def write_log_header():
             '++++==== Parable Web Interface Log ====++++\n'
         ])
 
-# Creating log config
-log_config = {
-    'version': 1,
-    'formatters': {
-        'default': {
-            'format': '{asctime} {levelname}: {message}',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-            'style': '{',
-        }
-    },
-    'handlers': {
-        'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
-            'formatter': 'default'
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': log_file,
-            'mode': 'a',
-            'encoding': 'utf-8',
-            'formatter': 'default',
-            'maxBytes': 50000,
-            'backupCount': 5,
-        }
-    },
-    'root': {
-        'level': log_level,
-        'handlers': ['wsgi', 'file', 'stream']
+log_config['formatters'].update({
+    'file': {
+        '()': 'uvicorn.logging.DefaultFormatter',
+        'fmt': '{asctime} {levelprefix} {message}',
+        'datefmt': '%Y-%m-%d %H:%M:%S',
+        'style': '{',
+        'use_colors': False
     }
-}
+})
+log_config['handlers'].update({
+    'file': {
+        'formatter': 'file',
+        'class': 'logging.FileHandler',
+        'mode': 'a',
+        'filename': log_file
+    }
+})
+log_config['loggers']['uvicorn']['handlers'].append(
+    'file'
+)
+log_config['loggers']['uvicorn.access']['handlers'].append(
+    'file'
+)
