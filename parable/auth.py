@@ -7,6 +7,7 @@ from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel, Field
 
 from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.exceptions import HTTPException
 
 from enigma_models.models.user import ParableUser as ParableUser
@@ -88,8 +89,11 @@ async def logout(request):
     return templates.TemplateResponse(request, template)
 
 @index_routes.route('/token', methods=['POST'])
-async def get_token(request):
-    print(request)
+async def get_token(scope, receive, send):
+    print(scope, receive, send)
+    assert scope['type'] == 'http'
+    response = JSONResponse({'ok': True})
+    await response(scope, receive, send)
 
 def login_required(view):
     pass

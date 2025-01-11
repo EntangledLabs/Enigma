@@ -13,21 +13,9 @@ from parable.routes import index_routes, admin_router, user_router
 from parable.auth import ParableAuthBackend
 from parable import secret_key
 
-
 # Lifespan handler
 @asynccontextmanager
 async def lifespan(app):
-    for route in app.router.routes:
-        print(route)
-        if isinstance(route, Mount):
-            if isinstance(route.app, StarletteRouter):
-                for mount_route in route.app.routes:
-                    print(mount_route)
-                    print(mount_route.url_path_for(mount_route.name))
-        else:
-            print(route.url_path_for(route.name))
-    print(app.router)
-    print(app.router.url_path_for('token'))
     write_log_header()
     yield
 

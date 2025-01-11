@@ -10,7 +10,9 @@ class Route:
         self.routes = []
 
     def route(self, path: str, methods: list):
+        print(path, methods)
         def decorator(func):
+            print(func)
             self.routes.append(
                 StarletteRoute(
                     path=path,
@@ -42,6 +44,7 @@ class Router(Route):
     def build_routes(self):
         return [Mount(
             path=self.path,
+            name=self.name,
             routes=self.routes
         )]
 

@@ -5,28 +5,30 @@
 {% endblock %}
 
 {% block content %}
-    <form method="post">
+    <form id="loginform">
         <label for="username">Username</label>
         <input name="username" id="username" required>
         <label for="password">Password</label>
         <input type="password" name="password" id="password" required>
-        <input type="submit" value="Log In">
+        <input type="submit" value="Log In" id="loginbutton">
     </form>
     <script type="text/javascript">
         $(document).ready(function () {
-            $("form input:submit").submit(function () {
-                username = document.getElementById("username").value;
-                password = document.getElementById("password").value;
+            $("#loginbutton").click(function (event) {
+                event.preventDefault();
+                let username = document.getElementById('username').value;
+                let password = document.getElementById('password').value;
 
                 $.ajax({
-                    url: "{{ url_for('token') }}",
                     type: "POST",
+                    url: "{{ url_for('get_token') }}",
                     contentType: "application/json",
                     headers: {
-                        "Authorization": "Bearer"
+                        "Authorization": "Basic " + btoa(`${username}:${password}`)
                     }
-                })
-            })
+                });
+
+            });
         });
     </script>
 
