@@ -13,11 +13,10 @@ from starlette.exceptions import HTTPException
 from enigma_models.models.user import ParableUser as ParableUser
 from enigma_models.auth import get_hash, get_hash_from_salted_hash, get_hash_from_salt, verify_hash
 
-from parable.route import Router, Route
-from parable.routes import index_routes
+from parable.route import ParableRouter
 from parable import templates, secret_key
 
-# User auth
+# Bearer token auth
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -63,6 +62,7 @@ async def get_current_user(token: str):
         raise credentials_exception
     return user
 
+# Authentication backend
 class ParableAuthBackend(AuthenticationBackend):
     async def authenticate(self, conn):
         if "Authorization" not in conn.headers:
@@ -76,19 +76,22 @@ class ParableAuthBackend(AuthenticationBackend):
         except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
             raise AuthenticationError('Invalid auth credentials')
 
-@index_routes.route('/login', methods=['GET'])
+# Authentication routes
+auth_routes = ParableRouter('auth')
+
+@auth_routes.route('/login', methods=['GET'])
 async def login(request):
     template = 'auth/login.html'
     context = {'request': request}
     return templates.TemplateResponse(request, template)
 
-@index_routes.route('/logout', methods=['GET'])
+@auth_routes.route('/logout', methods=['GET'])
 async def logout(request):
     template = 'logout.html'
     context = {'request': request}
     return templates.TemplateResponse(request, template)
 
-@index_routes.route('/token', methods=['POST'])
+@auth_routes.route('/token', methods=['POST'])
 async def get_token(scope, receive, send):
     print(scope, receive, send)
     assert scope['type'] == 'http'

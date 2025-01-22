@@ -8,24 +8,23 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Router as StarletteRouter, Mount
 
 from parable.logger import log_config, write_log_header
-from parable.route import Route, StaticRouter
-from parable.routes import index_routes, admin_router, user_router
-from parable.auth import ParableAuthBackend
+from parable.route import ParableRouter
+from parable.routes import admin_router, user_router
+from parable.auth import ParableAuthBackend, auth_routes
 from parable import secret_key
-
-# Lifespan handler
-@asynccontextmanager
-async def lifespan(app):
-    write_log_header()
-    yield
+from parable import templates
 
 # Routes
-app_routes = [
-    index_routes,
-    admin_router,
-    user_router,
-    StaticRouter()
-]
+router = ParableRouter()
+
+@router.route("/", methods=["GET"])
+async def index(request):
+    template = "index.html"
+    context = {"request": request}
+    return templates.TemplateResponse(template, context)
+
+router.include_router(admin_router)
+router.include_router(user_router)
 
 # Middleware
 middleware = [
@@ -33,11 +32,18 @@ middleware = [
     #Middleware(SessionMiddleware, secret_key=secret_key)
 ]
 
+# Lifespan handler
+@asynccontextmanager
+async def lifespan(app):
+    write_log_header()
+    print(router._routes)
+    yield
+
 # Application creation
 app = Starlette(
     debug=True,
     lifespan=lifespan,
-    routes=Route.get_routes(app_routes),
+    routes=router._routes,
     middleware=middleware
 )
 

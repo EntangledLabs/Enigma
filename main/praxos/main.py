@@ -18,7 +18,6 @@ from enigma_models.models.user import ParableUser
 
 ###############
 # TODO: Add "praxos event" creation
-# TODO: Add competitor creds
 
 load_dotenv(override=True)
 
