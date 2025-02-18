@@ -9,11 +9,11 @@ from pydantic import BaseModel, Field
 from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.exceptions import HTTPException
+from starlette.routing import Route
 
 from enigma_models.models.user import ParableUser as ParableUser
 from enigma_models.auth import get_hash, get_hash_from_salted_hash, get_hash_from_salt, verify_hash
 
-from parable.route import ParableRouter
 from parable import templates, secret_key
 
 # Bearer token auth
@@ -77,21 +77,17 @@ class ParableAuthBackend(AuthenticationBackend):
             raise AuthenticationError('Invalid auth credentials')
 
 # Authentication routes
-auth_routes = ParableRouter('auth')
 
-@auth_routes.route('/login', methods=['GET'])
 async def login(request):
     template = 'auth/login.html'
     context = {'request': request}
     return templates.TemplateResponse(request, template)
 
-@auth_routes.route('/logout', methods=['GET'])
 async def logout(request):
     template = 'logout.html'
     context = {'request': request}
     return templates.TemplateResponse(request, template)
 
-@auth_routes.route('/token', methods=['POST'])
 async def get_token(scope, receive, send):
     print(scope, receive, send)
     assert scope['type'] == 'http'
@@ -100,3 +96,10 @@ async def get_token(scope, receive, send):
 
 def login_required(view):
     pass
+
+# Routes
+auth_routes = [
+    Route('/login', endpoint=login, methods=['GET']),
+    Route('/logout', endpoint=logout, methods=['GET']),
+    Route('/token', endpoint=get_token, methods=['POST'])
+]
