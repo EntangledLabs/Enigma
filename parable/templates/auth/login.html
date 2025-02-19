@@ -30,7 +30,11 @@
                     contentType: "application/json",
                     headers: {
                         "Authorization": "Basic " + btoa(`${username}:${password}`)
+                    },
+                    success: function(data, status) {
+                        console.log('success');
                     }
+
                 });
 
             });
