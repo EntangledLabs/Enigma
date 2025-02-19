@@ -88,11 +88,12 @@ async def logout(request):
     context = {'request': request}
     return templates.TemplateResponse(request, template)
 
-async def get_token(scope, receive, send):
-    print(scope, receive, send)
-    assert scope['type'] == 'http'
-    response = JSONResponse({'ok': True})
-    await response(scope, receive, send)
+async def get_token(request):
+    print(request)
+    print(request.headers)
+    print(request.body)
+    response = JSONResponse({'ok': True}, status_code=200)
+    return response
 
 def login_required(view):
     pass

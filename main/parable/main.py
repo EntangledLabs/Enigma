@@ -7,10 +7,11 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Router as StarletteRouter, Mount, Route
 
+import parable
 from parable.logger import log_config, write_log_header
 from parable.auth import ParableAuthBackend, auth_routes
 from parable import secret_key
-from parable import templates
+from parable import templates, static
 
 # Routes
 async def index(request):
@@ -20,7 +21,8 @@ async def index(request):
 
 routes = [
     Route('/', endpoint=index),
-    Mount('/auth', routes=auth_routes)
+    Mount('/auth', routes=auth_routes),
+    Mount('/static', static, name='static')
 ]
 
 # Middleware
