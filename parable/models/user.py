@@ -1,1 +1,0 @@
-from enigma_models.models.user import ParableUser

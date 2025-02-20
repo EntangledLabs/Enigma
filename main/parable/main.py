@@ -26,7 +26,7 @@ async def favicon(request):
 
 routes = [
     Route('/', endpoint=index),
-    Route('/favicon.ico', endpoint=favicon),
+    #Route('/favicon.ico', endpoint=favicon),
     Route('/dashboard', endpoint=dashboard, methods=['GET']),
     Mount('/auth', routes=auth_routes),
     Mount('/static', static, name='static')
@@ -34,8 +34,7 @@ routes = [
 
 # Middleware
 middleware = [
-    #Middleware(AuthenticationMiddleware, backend=ParableAuthBackend),
-    #Middleware(SessionMiddleware, secret_key=secret_key)
+    Middleware(AuthenticationMiddleware, backend=ParableAuthBackend())
 ]
 
 # Lifespan handler

@@ -90,22 +90,25 @@ class ParableUser:
     @classmethod
     def find(cls, username: str=None, identifier: int=None):
         with Session(db_engine) as session:
-            if username is not None:
-                user = session.exec(
-                    select(
-                        ParableUserDB
-                    ).where(
-                        ParableUserDB.name == username
-                    )
-                ).one()
-            elif identifier is not None:
-                user = session.exec(
-                    select(
-                        ParableUserDB
-                    ).where(
-                        ParableUserDB.identifier == identifier
-                    )
-                ).one()
+            try:
+                if username is not None:
+                    user = session.exec(
+                        select(
+                            ParableUserDB
+                        ).where(
+                            ParableUserDB.name == username
+                        )
+                    ).one()
+                elif identifier is not None:
+                    user = session.exec(
+                        select(
+                            ParableUserDB
+                        ).where(
+                            ParableUserDB.identifier == identifier
+                        )
+                    ).one()
+            except:
+                return None
 
             if user is not None:
                 return ParableUser(

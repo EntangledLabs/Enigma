@@ -14,4 +14,4 @@ static = StaticFiles(directory=join(getcwd(), 'parable', 'static'))
 
 secret_key = getenv('PARABLE_SECRET_KEY')
 
-token_age = 60 * 10
+token_age = 60 * 60

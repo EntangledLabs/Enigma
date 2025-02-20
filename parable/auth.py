@@ -1,38 +1,22 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 import base64
-import binascii
 import jwt
 from jwt.exceptions import InvalidTokenError
 
-from pydantic import BaseModel, Field
-
-from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError
-from starlette.responses import JSONResponse, PlainTextResponse, Response, RedirectResponse
-from starlette.exceptions import HTTPException
+from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, BaseUser
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 
-from enigma_models.models.user import ParableUser as ParableUser
-from enigma_models.auth import get_hash, get_hash_from_salt, verify_hash
+from enigma_models.models.user import ParableUser as DBUser
+from enigma_models.auth import verify_hash
 
 from parable import templates, secret_key, token_age
 
-# Bearer token auth
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+log = logging.getLogger('uvicorn')
 
-class TokenData(BaseModel):
-    username: str | None = None
-
-def authenticate_user(username: str, password: str):
-    user = ParableUser.find(username=username)
-    if not user:
-        return False
-    if not verify_hash(password, user.pwhash):
-        return False
-    return user
-
+# Create Bearer tokens
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -44,38 +28,65 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     })
     return jwt.encode(to_encode, secret_key, algorithm='HS256')
 
-async def get_current_user(token: str):
-    credentials_exception = HTTPException(
-        status_code=401,
-        detail='Credentials could not be validated',
-        headers={"WWW-Authenticate": "Bearer"}
-    )
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=['HS256'])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except InvalidTokenError:
-        raise credentials_exception
-    user = ParableUser.find(username=username)
-    if user is None:
-        raise credentials_exception
-    return user
+def check_token(payload: dict):
+    expiry = datetime.fromtimestamp(int(payload.get("exp")), timezone.utc)
+    # If auth token is expired, direct user to login page
+    if expiry < datetime.now(timezone.utc):
+        return RedirectResponse(url='/auth/login')
+
+    # Issue new token if token is almost expired
+    if expiry < datetime.now(timezone.utc) + timedelta(minutes=15):
+        pass
+
+# Simple user class to pass around after authentication
+class ParableUser(BaseUser):
+
+    def __init__(self, username: str, identifier: int):
+        self.username = username
+        self.identifier = identifier
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def display_name(self) -> str:
+        return self.username
 
 # Authentication backend
 class ParableAuthBackend(AuthenticationBackend):
     async def authenticate(self, conn):
-        if "Authorization" not in conn.headers:
+        token = conn.cookies.get('token')
+        if token is None:
             return
 
-        auth = conn.headers["Authorization"]
+        #
         try:
-            scheme, credentials = auth.split()
-            if scheme.lower() != "basic":
-                return
-        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
-            raise AuthenticationError('Invalid auth credentials')
+            payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+            username: str = payload.get("sub")
+            if username is None:
+                raise AuthenticationError('Invalid token, no user provided')
+        except InvalidTokenError:
+            raise AuthenticationError('Invalid token')
+
+        user = DBUser.find(username=username)
+        if user is None:
+            raise AuthenticationError('Invalid token, invalid user')
+
+        auth_user = ParableUser(user.username, user.identifier)
+
+        scope = []
+        match user.permission_level:
+            case user.Permission.ADMINISTRATOR:
+                scope.append('admin')
+            case user.Permission.GREEN:
+                scope.append('green')
+            case _:
+                scope.append('user')
+
+        auth_credentials = AuthCredentials(scope)
+
+        return auth_credentials, auth_user
 
 # Authentication routes
 
@@ -90,42 +101,33 @@ async def logout(request):
     return templates.TemplateResponse(request, template)
 
 async def get_token(request):
-    print(request)
-    print(request.headers)
     b64credentials = request.headers['Authorization']
-    print(b64credentials)
-    print(b64credentials.split(' ')[1])
     credentials = base64.b64decode(b64credentials.split(' ')[1]).split(b':')
-    print(credentials)
+
     username = credentials[0].decode()
     pw = credentials[1]
-    print(username, pw)
+    log.info(f'Login request from {request.client.host} for {username}')
 
-    testusername = 'entangled'
-    testpw = 'Cooltech1;'
+    user = DBUser.find(username=username)
+    if user is None:
+        log.info(f'Login request from {request.client.host} for {username} failed: invalid username')
+        return JSONResponse({'error': 'Invalid credentials'}, status_code=401)
 
-    if username != testusername:
-        return Response(status_code=401)
-
-    hashed_testpw = get_hash(testpw)
-    result = verify_hash(plain_pw=pw, hashed_pw=hashed_testpw)
-    print(result)
+    result = verify_hash(plain_pw=pw, hashed_pw=user.pw_hash)
     if not result:
-        return Response(status_code=401)
+        log.info(f'Login request from {request.client.host} for {username} failed: invalid password')
+        return JSONResponse({'error': 'Invalid credentials'}, status_code=401)
 
-    success_redirect = Response(status_code=200)
-    success_redirect.set_cookie(
+    log.info(f'Login request from {request.client.host} for {username} successful, issuing token')
+
+    success_response = JSONResponse({'ok': 'true'})
+    success_response.set_cookie(
         key='token',
-        value=create_access_token(data={"sub": username}, expires_delta=timedelta(minutes=token_age)),
+        value=create_access_token(data={'sub': username}, expires_delta=timedelta(seconds=token_age)),
         httponly=True,
-        samesite='strict',
-        max_age=token_age
     )
 
-    return success_redirect
-
-def login_required(view):
-    pass
+    return success_response
 
 # Routes
 auth_routes = [
