@@ -5,21 +5,21 @@ from os.path import join
 from sqlmodel import Session, select
 
 from enigma.logger import log
-from enigma.engine.database import db_engine
-from enigma.models.credlist import Credlist, TeamCreds
-from enigma.models.settings import Settings
-from enigma.models.slareport import SLAReport
-from enigma.models.scorereport import ScoreReport
-from enigma.models.inject import InjectReport
+from enigma_models.models.credlist import Credlist, TeamCreds
+from enigma_models.models.settings import Settings
+from enigma_models.models.slareport import SLAReport
+from enigma_models.models.scorereport import ScoreReport
+from enigma_models.models.inject import InjectReport
 
-from db_models import RvBTeamDB, ParableUserDB
+from enigma_models.models.team import RvBTeam as RvBTeamModel
+from enigma_models.models.team import RvBTeamDB
+from enigma_models.database import db_engine
 
 # Team
-class RvBTeam:
+class RvBTeam(RvBTeamModel):
 
     def __init__(self, name: str, identifier: int, services: list[str]):
-        self.name = name
-        self.identifier = identifier
+        super().__init__(name, identifier, 0)
         self.total_scores = {
             'total_score': 0,
             'raw_score': 0,
@@ -31,7 +31,7 @@ class RvBTeam:
         log.debug(f'Created RvBTeam {self.name}')
 
     def __repr__(self):
-        return '<{}> with team id {} and total score {}'.format(
+        return '<{}> with competitor id {} and total score {}'.format(
             type(self).__name__,
             self.identifier,
             self.total_scores['total_score']
@@ -97,7 +97,7 @@ class RvBTeam:
             score=self.total_scores['total_score'],
             msg=json.dumps(msgs)
         ).add_to_db()
-        log.debug(f'Published score report for team {self.name}')
+        log.debug(f'Published score report for competitor {self.name}')
 
     # Updates total score
     def update_total(self):
@@ -112,6 +112,7 @@ class RvBTeam:
         self.total_scores['penalty_score'] = total
 
         self.total_scores['total_score'] = self.total_scores['raw_score'] - self.total_scores['penalty_score']
+        self.score = self.total_scores['total_score']
         self.update_in_db()
 
     # Service adding/removal
@@ -215,17 +216,17 @@ class RvBTeam:
     #######################
     # Creds methods
 
-    # Creates copies of the credlists specific to the team
+    # Creates copies of the credlists specific to the competitor
     def create_credlists(self, credlists: list[Credlist]):
         log.debug(f'Creating credlists for {self.name}')
         for credlist in credlists:
             TeamCreds(
                 name=credlist.name,
                 team_id=self.identifier,
-                creds=json.dumps(credlist.creds)
+                creds=credlist.creds
             ).add_to_db()
 
-    # Returns a random user and password for use in service check
+    # Returns a random competitor and password for use in service check
     # Parameter credlists is a list of names of the credlists to choose from
     def get_random_cred(self, credlists: list[str]) -> dict:
         log.debug(f'Getting random cred for {self.name}')
@@ -240,51 +241,11 @@ class RvBTeam:
         return choice
 
     #######################
-    # DB fetch/add
-
-    # Tries to add the team object to the DB. If exists, it will return False, else True
-    def add_to_db(self):
-        log.debug(f'Adding Team {self.name} to database')
-        try:
-            with Session(db_engine) as session:
-                session.add(
-                    ParableUserDB(
-                        name=self.name,
-                        identifier=self.identifier,
-                        permission_level=2
-                    )
-                )
-
-                session.add(
-                    RvBTeamDB(
-                        name=self.name,
-                        identifier=self.identifier,
-                        score=self.total_scores['total_score']
-                    )
-                )
-                session.commit()
-            return True
-        except:
-            log.warning(f'Failed to add Team {self.name} to database!')
-            return False
-
-    # Updates score in DB
-    def update_in_db(self):
-        log.debug(f'Updating score for Team {self.name} in database')
-        with Session(db_engine) as session:
-            session.exec(
-                select(
-                    RvBTeamDB
-                ).where(
-                    RvBTeamDB.identifier == self.identifier
-                )
-            ).one().score = self.total_scores['total_score']
-            session.commit()
+    # DB
 
     # Fetches all Team from the DB
     @classmethod
-    def find_all(cls, services: list[str]):
-        log.debug(f'Retrieving all teams from database')
+    def find_all(cls, **kwargs):
         teams = []
         with Session(db_engine) as session:
             db_teams = session.exec(
@@ -297,17 +258,7 @@ class RvBTeam:
                 RvBTeam(
                     name=db_team.name,
                     identifier=db_team.identifier,
-                    services=services
+                    services=kwargs['services']
                 )
             )
         return teams
-
-    # Creates a new Team from the config info
-    @classmethod
-    def new(cls, name: str, identifier: int, services: list[str]):
-        log.debug(f'Creating new Team {name}')
-        return cls(
-            name=name,
-            identifier=identifier,
-            services=services
-        )

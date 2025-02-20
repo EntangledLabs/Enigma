@@ -1,0 +1,3 @@
+
+
+competitor_routes = []

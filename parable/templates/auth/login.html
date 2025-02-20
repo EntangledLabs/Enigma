@@ -1,10 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-</body>
-</html>
+{% block header %}
+  <h1>{% block title %}Log In{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+    <form id="loginform">
+        <label for="username">Username</label>
+        <input name="username" id="username" required>
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" required>
+        <input type="submit" value="Log In" id="loginbutton">
+    </form>
+    <body>
+        <div id="status">
+
+        </div>
+    </body>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#loginbutton").click(function (event) {
+                event.preventDefault();
+                let username = document.getElementById('username').value;
+                let password = document.getElementById('password').value;
+
+                $.ajax({
+                    type: "POST",
+                    url: "{{ url_for('get_token') }}",
+                    contentType: "application/json",
+                    dataType: "json",
+                    headers: {
+                        "Authorization": "Basic " + btoa(`${username}:${password}`)
+                    },
+                    success: function(data) {
+                        console.log(data);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.log(errorThrown);
+                    }
+                });
+
+            });
+        });
+    </script>
+
+{% endblock %}

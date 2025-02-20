@@ -4,7 +4,7 @@ import threading
 from enigma.logger import log
 
 from enigma.broker import RabbitMQ
-from enigma.engine.scoring import ScoringEngine, RvBScoringEngine
+from enigma.engine.scoring import RvBScoringEngine
 
 # TODO: Add event scheduler to create box score start times
 class RvBCMD:
@@ -61,7 +61,7 @@ class RvBCMD:
             case 'set_rounds':
                 if isinstance(self.engine, RvBScoringEngine):
                     if not self.engine.engine_lock:
-                        self.rounds = cmd_args[1]
+                        self.rounds = int(cmd_args[1])
                         log.info(f'Setting rounds to {self.rounds}')
                     else:
                         log.warning('Cannot change number of rounds while running!')
@@ -98,3 +98,5 @@ class RvBCMD:
                         log.warning('Enigma is not running!')
                 else:
                     log.error('Engine does not exist!')
+            case _:
+                log.error('Unknown command!')

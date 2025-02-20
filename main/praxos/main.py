@@ -11,14 +11,13 @@ import discord
 from discord.ext import commands
 
 from praxos.logger import log, write_log_header
-from praxos.models.settings import Settings
-from praxos.models.team import RvBTeam
-from praxos.models.box import Box
-from praxos.models.user import ParableUser
+from enigma_models.models.settings import Settings
+from enigma_models.models.team import RvBTeam
+from enigma_models.models.box import Box
+from enigma_models.models.user import ParableUser
 
 ###############
 # TODO: Add "praxos event" creation
-# TODO: Add team creds
 
 load_dotenv(override=True)
 
@@ -122,7 +121,7 @@ async def init(ctx: commands.context.Context):
     comp_cat = await guild.create_category(name=comp_name, overwrites=main_overwrites)
     await comp_cat.create_text_channel(name='announcements', overwrites=announcement_overwrites)
     await comp_cat.create_text_channel(name='general', overwrites=main_overwrites)
-    await comp_cat.create_text_channel(name='green-team-alert', overwrites=gt_overwrites)
+    await comp_cat.create_text_channel(name='green-competitor-alert', overwrites=gt_overwrites)
     await comp_cat.create_text_channel(name='dev-general', overwrites=dev_overwrites)
     await comp_cat.create_voice_channel(name='dev-voice', overwrites=dev_overwrites)
     await comp_cat.create_voice_channel(name='general', overwrites=main_overwrites)
@@ -202,8 +201,8 @@ async def create_teams(ctx: commands.context.Context):
             }
 
             team_cat = await guild.create_category(name=f'{comp_name} {teamname}', overwrites=team_overwrites)
-            await team_cat.create_text_channel(name='team-chat', overwrites=team_overwrites)
-            await team_cat.create_voice_channel(name='team-voice', overwrites=team_overwrites)
+            await team_cat.create_text_channel(name='competitor-chat', overwrites=team_overwrites)
+            await team_cat.create_voice_channel(name='competitor-voice', overwrites=team_overwrites)
 
             for teammate in row:
                 member = discord.utils.get(guild.members, name=teammate)
@@ -219,12 +218,12 @@ async def create_teams(ctx: commands.context.Context):
             identifier = identifier + 1
 
     csvfile = StringIO()
-    fieldnames = ['team', 'password']
+    fieldnames = ['competitor', 'password']
 
 
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     for team, password in username_pw_combos.items():
-        writer.writerow({'team': team, 'password': password})
+        writer.writerow({'competitor': team, 'password': password})
     csvfile.seek(0)
 
     buffer = BytesIO()
@@ -248,12 +247,12 @@ async def delete_teams(ctx: commands.context.Context):
     competitor_role_re = re.compile(r'^Team\s[a-zA-Z0-9]+$')
     competitor_cat_re = re.compile(fr'^{comp_name}\s[a-zA-Z0-9]+$')
 
-    log.debug("Removing team roles")
+    log.debug("Removing competitor roles")
     for role in guild.roles:
         if competitor_role_re.match(role.name) is not None:
             await role.delete()
 
-    log.debug("Removing team categories and channels")
+    log.debug("Removing competitor categories and channels")
     for category in guild.categories:
         if competitor_cat_re.match(category.name):
             for channel in category.channels:
@@ -274,7 +273,7 @@ async def delete_teams(ctx: commands.context.Context):
     await ctx.send('Finished! Deleted teams')
 
 
-# Green team support commands
+# Green competitor support commands
 @bot.command(pass_context=True)
 @commands.check_any(commands.has_role(f'{Settings.get_setting('comp_name')} Competitor'),
                     commands.has_role("Green Team"), 
@@ -283,7 +282,7 @@ async def delete_teams(ctx: commands.context.Context):
 async def request(ctx: commands.context.Context, *args):
     log.info('Command \'request\' invoked. Someone has a GT request.')
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    gt_alert_channel = discord.utils.get(guild.text_channels, name='green-team-alert')
+    gt_alert_channel = discord.utils.get(guild.text_channels, name='green-competitor-alert')
     gt_role = discord.utils.get(guild.roles, name='Green Team')
     competitor_role_re = re.compile(r'^Team\s[a-zA-Z0-9]+$')
     for role in ctx.author.roles:

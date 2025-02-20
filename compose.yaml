@@ -26,11 +26,12 @@ services:
       retries: 3
       start_interval: 2s
 
-
   parable:
     container_name: parable
     image: parable:latest
-    build: ./parable
+    build:
+      context: .
+      dockerfile: ./docker/parable/Dockerfile
     ports:
       - "5070:5070"
     restart: no

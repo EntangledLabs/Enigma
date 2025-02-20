@@ -1,18 +1,17 @@
-import os
+from os import getcwd, getenv
+from os.path import join
 
-from flask import Flask
-
-from os import getenv
 from dotenv import load_dotenv
+
+from starlette.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
 
 load_dotenv(override=True)
 
-postgres_settings = {
-    'user': getenv('POSTGRES_USER'),
-    'password': getenv('POSTGRES_PASSWORD'),
-    'host': getenv('POSTGRES_HOST'),
-    'port': getenv('POSTGRES_PORT')
-}
+templates = Jinja2Templates(directory=join(getcwd(), 'parable', 'templates'))
 
-def create_app(test_config=None):
-    pass
+static = StaticFiles(directory=join(getcwd(), 'parable', 'static'))
+
+secret_key = getenv('PARABLE_SECRET_KEY')
+
+token_age = 60 * 60

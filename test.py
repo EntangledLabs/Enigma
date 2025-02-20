@@ -2,14 +2,13 @@ import json, csv
 from os.path import join, isfile, splitext
 from os import listdir
 
-from sqlmodel import create_engine
-
-from enigma.engine.database import del_db, init_db
+from enigma_models.database import del_db, init_db
 
 from enigma.models.box import Box
-from enigma.models.settings import Settings
-from enigma.models.credlist import Credlist
 from enigma.models.team import RvBTeam
+from enigma_models.models.user import ParableUser
+from enigma_models.models.settings import Settings
+from enigma_models.models.credlist import Credlist
 from enigma.broker import RabbitMQ
 
 boxes_path = './example_configs/boxes'
@@ -53,17 +52,38 @@ for path in listdir(creds_path):
             credlist.add_to_db()
 
 #print('teams')
-"""teams = []
+teams = []
+users = []
 for i in range(5):
+    user = ParableUser(
+        username=f'coolteam{i+1}',
+        identifier=i+1,
+        permission_level=2
+    )
+    pw = user.create_pw(12)
+    users.append((user, pw))
+    user.add_to_db()
+
     team = RvBTeam(
         name=f'coolteam{i+1}',
         identifier=i+1,
         services=Box.all_service_names(boxes)
     )
     teams.append(team)
-    team.add_to_db()"""
+    team.add_to_db()
 
-Settings(first_octets='10.10', sla_requirement=2)
+admin_user = ParableUser(
+    username='admin',
+    identifier=0,
+    permission_level=0
+)
+admin_pw = admin_user.create_pw(12)
+users.append((admin_user, admin_pw))
+admin_user.add_to_db()
+
+Settings(first_octets='10.10', sla_requirement=2).add_to_db()
+
+print([(user[0].username, user[1]) for user in users])
 
 while True:
     cmd = input('Enter command: ')

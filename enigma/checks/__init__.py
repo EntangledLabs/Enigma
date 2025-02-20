@@ -30,7 +30,7 @@ class Service(ABC):
     # This method is perhaps most important. It conducts a service check and returns a boolean to represent the result
     # Note that conduct_service_check() will be called in a worker process, not the main thread
     # Implementations of conduct_service_check() must check kwargs for check info
-    # This is used to properly target a team's box
+    # This is used to properly target a competitor's box
     # e.x. If the pod networks are on 172.16.<identifier>.0, then conduct_service_check() will target 172.16.<identifier>.<box>
     # e.x. If Team01 has identifier '32', and an SSHService is configured on Box 'examplebox' with host octet 5,
     #      then the worker process will target 172.16.32.5

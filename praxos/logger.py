@@ -1,4 +1,5 @@
 import logging
+from logging import FileHandler
 from os import getenv, getcwd
 from os.path import join
 
@@ -32,7 +33,7 @@ log_format = logging.Formatter(
     )
 
 # Handlers for file and stream output
-file_handler = logging.FileHandler(
+file_handler = FileHandler(
     log_file,
     mode = 'a',
     encoding = 'utf-8'

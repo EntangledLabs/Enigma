@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 # Copy modules
 COPY /praxos /app/praxos
-COPY /db_models /app/db_models
+COPY /enigma_models /app/enigma_models
 
 # Copy main.py
 COPY /main/praxos/main.py /app/main.py
