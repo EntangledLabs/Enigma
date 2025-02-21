@@ -1,0 +1,17 @@
+[guild]
+guild_id = 1311244093229240320
+gt_cat_name = 'Green Team'
+rt_cat_name = 'Red Team'
+
+[competition]
+name = 'Example RvB'
+category_name = 'Example RvB'
+alert_channel = 'green-team-alert'
+boxes = ['testbox', 'secondtestbox']
+
+[roles]
+competitor_role = 'Example Competitor'
+gt_role = 'Green Team'
+rt_role = 'Red Team'
+dir_role = 'Director'
+dev_role = 'Example Developer'

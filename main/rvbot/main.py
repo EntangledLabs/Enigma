@@ -1,21 +1,44 @@
 from dotenv import load_dotenv
 import discord
 from discord.ext import commands
+
 from os import getenv
 import csv, re
 import asyncio
 import tomllib
-from io import TextIOWrapper, BytesIO, StringIO
+from enum import Enum
+from io import TextIOWrapper, BytesIO
+
+from rvbot.logger import log, write_log_header
+
+from enigma_models.models.settings import Settings
+from enigma_models.models.team import RvBTeam
+from enigma_models.models.box import Box
+from enigma_models.models.user import ParableUser
 
 load_dotenv(override=True)
 
 # setup
 
-with open('config.toml', 'rb') as cfg:
-    config = tomllib.load(cfg)
+class CfgMode(Enum):
+    TOML = 0
+    ENIGMA = 1
 
-token = getenv('TOKEN')
-guild_id = config['guild']['guild_id']
+config_mode = CfgMode.TOML
+
+if config_mode == CfgMode.TOML:
+    with open('rvbot.toml', 'rb') as cfg:
+        config = tomllib.load(cfg)
+
+    competitor_cat_re = re.compile(fr'^{config['competition']['name']}\s[a-zA-Z0-9\s]+$')
+
+elif config_mode == CfgMode.ENIGMA:
+    pass
+else:
+    raise ValueError("Invalid mode")
+
+token = getenv('DISCORD_API_KEY')
+guild_id = getenv('DISCORD_GUILD_ID')
 
 intents = discord.Intents.default()
 intents.message_content = True
