@@ -6,7 +6,7 @@ WORKDIR /app
 # Install requirements
 COPY --from=ghcr.io/astral-sh/uv:0.5.31 /uv /uvx /bin/
 
-COPY /requirements/parable/requirements.txt /app/requirements.txt
+COPY /requirements/parable.txt /app/requirements.txt
 RUN uv pip install --system -r /app/requirements.txt
 
 # Copy modules
