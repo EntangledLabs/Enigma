@@ -129,7 +129,8 @@ async def init(ctx: commands.Context):
         guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         gt_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         rt_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        dir_role: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        dir_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        comp_role: discord.PermissionOverwrite(read_messages=True, send_messages=False)
     }
 
     # Creating competition category
@@ -292,7 +293,7 @@ async def delete_teams(ctx):
             await role.delete()
 
     for category in guild.categories:
-        if competitor_cat_re.match(category.name):
+        if competitor_cat_re.match(category.name) or competitor_cat_re.match(category.name):
             for channel in category.channels:
                 await channel.delete()
             await category.delete()
@@ -308,7 +309,7 @@ async def delete_teams(ctx):
 async def add_team(ctx, teamname):
     """Adds a team with specified name, along with role and cat"""
     guild = discord.utils.get(bot.guilds, id=guild_id)
-    team_cats = [cat for cat in guild.categories if competitor_cat_re.match(cat.name)]
+    team_cats = [cat for cat in guild.categories if competitor_cat_re.match(cat.name) or competitor_cat_re.match(cat.name)]
     last_index = 1
 
     for cat in team_cats:
@@ -317,6 +318,8 @@ async def add_team(ctx, teamname):
 
         if index > last_index:
             last_index = index
+
+    last_index = last_index + 1
 
     team_role = await guild.create_role(name=f'Team {teamname}' if teamname is not None else f'Team {last_index}')
     team_overwrites = {
@@ -340,6 +343,36 @@ async def add_team(ctx, teamname):
         overwrites=team_overwrites
     )
 
+    embed = discord.Embed()
+    embed.title = 'Team Creation Wizard'
+    embed.description = f'Team {teamname} successfully created!'
+    await ctx.send(embed=embed)
+
+@bot.command(pass_context=True)
+@commands.check_any(commands.has_any_role(*admin_allowed),
+                    commands.has_guild_permissions(administrator=True))
+async def add_teammate(ctx, teamname, user_tag):
+    """Adds a user with tag user_tag to team with name teamname"""
+    guild = discord.utils.get(bot.guilds, id=guild_id)
+
+    embed = discord.Embed()
+    embed.title = 'Teammate Addition Wizard'
+    try:
+        team_role = discord.utils.get(guild.roles, name=f'Team {teamname}')
+        comp_role = discord.utils.get(guild.roles, name=config['roles']['competitor_role'])
+
+        member = discord.utils.get(guild.members, name=user_tag)
+
+        await member.add_roles(team_role)
+        await member.add_roles(comp_role)
+
+    except:
+        embed.description = 'Team name or user not found!'
+        await ctx.send(embed=embed)
+        return
+
+    embed.description = f'User \'{user_tag}\' successfully added to team \'{teamname}\'!'
+    await ctx.send(embed=embed)
 
 # ++++==== GT Helpers ====++++
 @bot.command(pass_context=True)
@@ -357,12 +390,18 @@ async def send_creds(ctx):
 
         for row in csvreader:
             team_name = row.pop(0)
-            team_role = await discord.utils.get(guild.roles, name=f'Team {team_name}')
-            team_cat = await discord.utils.get(guild.categories, name=f'{config['competition']['name']} {team_name}')
-            team_general = await discord.utils.get(team_cat.text_channels, name='competitor-chat')
 
-            embed.description = f'Your credentials are: {row.pop(0)}:{row.pop(0)}'
-            team_general.send(embed=embed)
+            for category in guild.categories:
+                if category.name.find(team_name) != -1:
+                    team_cat = category
+                    break
+            team_general = team_cat.text_channels[0]
+
+            embed.description = f'Your credentials are:\n{row.pop(0)}:{row.pop(0)}'
+            await team_general.send(embed=embed)
+
+    embed.description = 'All creds sent'
+    await ctx.send(embed=embed)
 
 @bot.command(pass_context=True)
 @commands.check_any(commands.has_any_role(*[*gt_allowed, *admin_allowed]),
@@ -377,9 +416,12 @@ async def send_message(ctx, title, message):
     embed.description = message
 
     for category in guild.categories:
-        if competitor_cat_re.match(category.name):
+        if competitor_cat_re.match(category.name) or competitor_cat_re.match(category.name):
             channel = category.text_channels[0]
-            await channel.send(embed=embed, file=ctx.message.attachments[0].to_file())
+            await channel.send(embed=embed)
+
+    embed.description = 'Message sent to all teams'
+    await ctx.send(embed=embed)
 
 # ++++==== GT Support ====++++
 @bot.command(pass_context=True)
