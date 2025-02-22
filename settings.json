@@ -1,0 +1,45 @@
+{
+  "name": "example",
+  "info": "verbose",
+  "check_info": {
+    "check_time": 30,
+    "jitter": 0,
+    "timeout": 5,
+    "points": 10
+  },
+  "sla": {
+    "enabled": true,
+    "requirement": 5,
+    "penalty": 100
+  },
+  "first_octets": "10.10",
+  "first_pod": "1",
+  "boxes":{
+    "examplebox": {
+      "identifier": 1,
+      "services": {
+        "ssh": {
+          "port": 22,
+          "auth": ["plaintext", "pubkey"],
+          "keyfile": "",
+          "credlist": ["examplecreds"]
+        },
+        "http": {
+          "port": 80,
+          "path": ""
+        },
+        "https": {
+          "port": 443,
+          "path": ""
+        }
+      }
+    }
+  },
+  "creds": {
+    "examplecreds": {
+      "user1": "securepassword",
+      "user2": "securepassword",
+      "user3": "insecurepassword"
+    }
+  }
+}
