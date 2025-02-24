@@ -1,7 +1,0 @@
-point_category,raw_points,penalty_points,total_points
-total,50,200,-150
-examplebox.http,20,0,20
-examplebox.https,20,0,20
-examplebox.ssh,0,100,-100
-examplebox2.http,10,0,10
-examplebox2.ssh,0,100,-100

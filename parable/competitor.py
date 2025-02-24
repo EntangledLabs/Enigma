@@ -1,3 +1,3 @@
+from nicegui import APIRouter, ui
 
-
-competitor_routes = []
+router = APIRouter(prefix='/competitor')
