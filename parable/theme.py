@@ -9,3 +9,5 @@ def frame(navigation_title: str):
     ui.colors()
     with ui.header():
         pass
+
+    yield
