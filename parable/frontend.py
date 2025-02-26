@@ -1,11 +1,11 @@
 from nicegui import ui, app
-from starlette.applications import Starlette
+from fastapi import FastAPI
 
 from parable.competitor import router as CompetitorRouter
 from parable.admin import router as AdminRouter
 from parable.theme import frame
 
-def init(app: Starlette) -> None:
+def init(app: FastAPI) -> None:
 
 
     @ui.page('/dashboard')

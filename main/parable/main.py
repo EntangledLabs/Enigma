@@ -1,24 +1,12 @@
 from contextlib import asynccontextmanager
 import uvicorn
 
-from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.routing import Route
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
 
 from parable.auth import get_token, ParableAuthBackend
 from parable.logger import write_log_header, log_config
 import parable.frontend as frontend
-
-# Routes
-routes = [
-    Route('/get_token', endpoint=get_token, methods=['POST'])
-]
-
-# Middleware
-middleware = [
-    Middleware(AuthenticationMiddleware, backend=ParableAuthBackend())
-]
 
 # Lifespan handler
 @asynccontextmanager
@@ -27,14 +15,12 @@ async def lifespan(app):
     yield
 
 # Application object creation
-app = Starlette(
+app = FastAPI(
     debug=True,
-    lifespan=lifespan,
-    routes=routes,
-    middleware=middleware
+    lifespan=lifespan
 )
 
-# Adding NiceGUI app on top of existing Starlette app
+# Adding NiceGUI app on top of existing FastAPI app
 frontend.init(app)
 
 # Script run check

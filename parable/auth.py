@@ -1,13 +1,12 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.routing import APIRouter
+
 import base64
 import jwt
 from jwt.exceptions import InvalidTokenError
-
-from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, BaseUser
-from starlette.responses import JSONResponse, RedirectResponse, Response
-from starlette.routing import Route
 
 from enigma_models.models.user import ParableUser as DBUser
 from enigma_models.auth import verify_hash
@@ -15,6 +14,7 @@ from enigma_models.auth import verify_hash
 from parable import secret_key, token_age
 
 log = logging.getLogger('uvicorn')
+auth_router = APIRouter()
 
 # Create Bearer tokens
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -39,7 +39,7 @@ def check_token(payload: dict):
         pass
 
 # Simple user class to pass around after authentication
-class ParableUser(BaseUser):
+class ParableUser:
 
     def __init__(self, username: str, identifier: int):
         self.username = username
@@ -88,6 +88,7 @@ class ParableAuthBackend(AuthenticationBackend):
 
         return auth_credentials, auth_user
 
+@auth_router.post('/token')
 async def get_token(request):
     b64credentials = request.headers['Authorization']
     credentials = base64.b64decode(b64credentials.split(' ')[1]).split(b':')
