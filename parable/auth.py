@@ -1,8 +1,11 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Any, Callable
 
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.routing import APIRouter
+
+from nicegui import ui, app
 
 import base64
 import jwt
@@ -87,6 +90,14 @@ class ParableAuthBackend(AuthenticationBackend):
         auth_credentials = AuthCredentials(scope)
 
         return auth_credentials, auth_user
+
+class page(ui.page):
+
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        async def content():
+            pass
+
+        return super().__call__(content)
 
 @auth_router.post('/token')
 async def get_token(request):
