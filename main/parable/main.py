@@ -4,7 +4,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from parable.auth import get_token, ParableAuthBackend
 from parable.logger import write_log_header, log_config
 import parable.frontend as frontend
 

@@ -1,8 +1,15 @@
+from icecream import ic
+
 import logging
 from datetime import datetime, timedelta, timezone
 
+from nicegui import app, ui
+
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.routing import APIRouter
+from fastapi.requests import Request
+
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import base64
 import jwt
@@ -53,7 +60,23 @@ class ParableUser:
     def display_name(self) -> str:
         return self.username
 
-# Authentication backend
+# Auth middleware
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        excluded_paths = [
+            '/',
+            '/dashboard'
+        ]
+
+        if request['path'] not in excluded_paths:
+            ic(app.storage.user.get('token'))
+
+
+            return RedirectResponse(url='/auth/login')
+
+        return await call_next(request)
+
+"""# Authentication backend
 class ParableAuthBackend(AuthenticationBackend):
     async def authenticate(self, conn):
         token = conn.cookies.get('token')
@@ -86,34 +109,19 @@ class ParableAuthBackend(AuthenticationBackend):
 
         auth_credentials = AuthCredentials(scope)
 
-        return auth_credentials, auth_user
+        return auth_credentials, auth_user"""
 
-@auth_router.post('/token')
-async def get_token(request):
-    b64credentials = request.headers['Authorization']
-    credentials = base64.b64decode(b64credentials.split(' ')[1]).split(b':')
-
-    username = credentials[0].decode()
-    pw = credentials[1]
-    log.info(f'Login request from {request.client.host} for {username}')
-
+async def get_token(username, password):
     user = DBUser.find(username=username)
     if user is None:
-        log.info(f'Login request from {request.client.host} for {username} failed: invalid username')
-        return JSONResponse({'error': 'Invalid credentials'}, status_code=401)
+        log.info(f'Login failed for {username}')
+        return False
 
-    result = verify_hash(plain_pw=pw, hashed_pw=user.pw_hash)
+    result = verify_hash(plain_pw=password, hashed_pw=user.pw_hash)
     if not result:
-        log.info(f'Login request from {request.client.host} for {username} failed: invalid password')
-        return JSONResponse({'error': 'Invalid credentials'}, status_code=401)
+        log.info(f'Login failed for {username}')
+        return False
 
-    log.info(f'Login request from {request.client.host} for {username} successful, issuing token')
+    log.info(f'Login request for {username} successful, issuing token')
 
-    success_response = JSONResponse({'ok': 'true'})
-    success_response.set_cookie(
-        key='token',
-        value=create_access_token(data={'sub': username}, expires_delta=timedelta(seconds=token_age)),
-        httponly=True,
-    )
-
-    return success_response
+    return create_access_token(data={'sub': username}, expires_delta=timedelta(seconds=token_age))
