@@ -19,7 +19,7 @@ def login():
                 app.storage.user.update({'token': token})
 
     with frame('Login'):
-        with ui.card.classes('absolute-center'):
+        with ui.card().classes('absolute-center'):
             username = ui.input('Username').on('keydown.enter', authenticate)
             password = ui.input('Password', password=True, password_toggle_button=True).on('keydown.enter', authenticate)
             ui.button('Log In', on_click=authenticate)

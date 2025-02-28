@@ -3,13 +3,13 @@ from icecream import ic
 import logging
 from datetime import datetime, timedelta, timezone
 
-from nicegui import app, ui
+from nicegui import app, ui, helpers
 
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.requests import Request
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from typing import Any, Callable
 
 import base64
 import jwt
@@ -60,21 +60,27 @@ class ParableUser:
     def display_name(self) -> str:
         return self.username
 
-# Auth middleware
-class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        excluded_paths = [
-            '/',
-            '/dashboard'
-        ]
+# Auth page
+class page(ui.page):
 
-        if request['path'] not in excluded_paths:
-            ic(app.storage.user.get('token'))
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        async def content(request: Request):
+            await ui.context.client.connected()
 
+            ic(request)
+            ic(request.headers)
+            ic(request.cookies)
+            auth_token = request.cookies.get("auth_token")
+            if auth_token is None:
+                ui.navigate.to('/login')
+                return
 
-            return RedirectResponse(url='/auth/login')
+            if helpers.is_coroutine_function(func):
+                await func()
+            else:
+                func()
 
-        return await call_next(request)
+        return super().__call__(content)
 
 """# Authentication backend
 class ParableAuthBackend(AuthenticationBackend):
