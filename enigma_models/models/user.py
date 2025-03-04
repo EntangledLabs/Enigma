@@ -15,19 +15,23 @@ class ParableUserDB(SQLModel, table=True):
     permission_level: int = Field(ge=0, le=2)
     pw_hash: bytes | None = Field(default=None)
 
+# ParablePermission class
+class ParablePermission(Enum):
+    ADMINISTRATOR = 0
+    GREEN = 1
+    USER = 2
+
 # ParableUser class
 class ParableUser:
-
-    class Permission(Enum):
-        ADMINISTRATOR = 0
-        GREEN = 1
-        USER = 2
 
     def __init__(self, username: str, identifier: int, permission_level: int, pw_hash: bytes=None):
         self.username = username
         self.identifier = identifier
-        self.permission_level = permission_level
+        self.permission_level = ParablePermission(permission_level)
         self.pw_hash = pw_hash
+
+    def __repr__(self):
+        return f'<ParableUser {self.username}> with identifier {self.identifier} and permission {self.permission_level}'
 
     def create_pw(self, length: int):
         alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
@@ -48,7 +52,7 @@ class ParableUser:
                     ParableUserDB(
                         name=self.username,
                         identifier=self.identifier,
-                        permission_level=self.permission_level,
+                        permission_level=self.permission_level.value,
                         pw_hash=self.pw_hash
                     )
                 )
