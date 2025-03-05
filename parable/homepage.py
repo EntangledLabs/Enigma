@@ -5,4 +5,4 @@ from parable.theme import frame
 @ui.page('/')
 def index():
     with frame('Home Page'):
-        pass
+        ui.label('Welcome to Enigma!')
