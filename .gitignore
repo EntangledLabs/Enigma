@@ -2,6 +2,7 @@
 .enigma/
 .bot/
 .parable/
+.nicegui/
 
 *.pyc
 __pycache__/

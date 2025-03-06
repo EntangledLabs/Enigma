@@ -1,5 +1,3 @@
-from icecream import ic
-
 import logging
 
 from nicegui import app, ui, helpers
@@ -23,15 +21,34 @@ class ParableUser:
         self.permission_level = permission_level
 
 # Auth page
-class page(ui.page):
+class auth_page(ui.page):
 
     def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
         async def content():
             await ui.context.client.connected()
-
             user = app.storage.user.get('user')
             if user is None:
                 ui.navigate.to('/login')
+
+            if helpers.is_coroutine_function(func):
+                await func()
+            else:
+                func()
+
+        return super().__call__(content)
+
+# Admin page
+class admin_page(ui.page):
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        async def content():
+            await ui.context.client.connected()
+            user = app.storage.user.get('user')
+            if user is None:
+                ui.navigate.to('/login')
+
+            if not user.get('permission_level') == ParablePermission.ADMINISTRATOR:
+                ui.navigate.to('/login')
+                ui.timer(1.0, lambda: ui.notify('You cannot access this page!', color='negative'))
 
             if helpers.is_coroutine_function(func):
                 await func()

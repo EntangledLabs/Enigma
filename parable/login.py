@@ -1,13 +1,11 @@
-from icecream import ic
-
 import logging
 
 from nicegui import ui, app
 
 from fastapi.requests import Request
 
-from parable.theme import frame
-from parable.auth import verify_credentials
+from .theme import frame
+from .auth import verify_credentials
 
 log = logging.getLogger('uvicorn')
 
@@ -15,6 +13,10 @@ log = logging.getLogger('uvicorn')
 def login(request: Request):
     def authenticate():
         log.info(f'Authentication request from {request.client.host}')
+        ic(app.storage.user is None)
+        if app.storage.user is not None:
+            ui.notify('Already logged in!')
+            return
         if username.value is None or password.value is None:
             log.info(f'Authentication failed: {'username' if username.value is None else 'password'} not provided')
             ui.notify('Username and password is required', color='negative')
@@ -38,3 +40,10 @@ def login(request: Request):
             username = ui.input('Username').on('keydown.enter', authenticate)
             password = ui.input('Password', password=True, password_toggle_button=True).on('keydown.enter', authenticate)
             ui.button('Log In', on_click=authenticate)
+
+@ui.page('/logout')
+def logout(request: Request):
+    user = app.storage.user.get('user')
+    log.info(f'Logout from {request.client.host} for user {user.get('username')}')
+    app.storage.user.clear()
+    ui.navigate.to('/login')

@@ -1,6 +1,6 @@
 from nicegui import ui, app
 
-from parable.theme import frame
+from .theme import frame
 
 @ui.page('/')
 def index():

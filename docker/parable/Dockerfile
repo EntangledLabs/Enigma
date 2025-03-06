@@ -16,5 +16,7 @@ COPY /enigma_models /app/enigma_models
 # Copy main.py
 COPY /main/parable/main.py /app/main.py
 
+EXPOSE 5070
+
 # Run main.py
 CMD ["python", "main.py"]

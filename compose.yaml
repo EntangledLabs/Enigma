@@ -37,8 +37,8 @@ services:
     restart: no
     env_file:
       - ".env"
-    environment:
-      DB_URL: enigma-postgres
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       enigma:
         condition: service_healthy

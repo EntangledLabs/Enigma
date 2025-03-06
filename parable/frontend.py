@@ -1,10 +1,10 @@
 from nicegui import ui, app
 from fastapi import FastAPI
 
-from parable.admin import router as AdminRouter
-from parable.theme import frame
+from .admin import router as AdminRouter
+from .theme import frame
 
-from parable import (
+from . import (
     login,
     dashboard,
     homepage
